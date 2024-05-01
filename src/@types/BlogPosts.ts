@@ -1,7 +1,7 @@
 export type BlogPostPreview = {
   id: number;
+  path?: string;
   title: string;
-  path: string;
   date: string;
   abstract: string;
   image: string;
