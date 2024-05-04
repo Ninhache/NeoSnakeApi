@@ -1,8 +1,11 @@
+import fs from "fs";
+import path from "path";
 import express, { Request, Response } from "express";
-import { BlogPostPreview } from "./@types/BlogPosts";
 import cors from "cors";
 import { transformTitleToPath } from "./util/BlogUtil";
 import { damerDamerauLevenshteinDistance } from "./util/Math";
+import { BlogPost, BlogPostPreview } from "./@types/BlogPosts";
+import { metadataParser } from "./util/MetadataParser";
 
 const app = express();
 
@@ -10,47 +13,71 @@ const app = express();
 // the frontend will be hosted and else, I will keep it simple... stupid
 app.use(cors());
 
-// They're book for the moment, but, ahem, it's a demo ?
-const articles: BlogPostPreview[] = [
-  {
-    id: 1,
-    title: "The Great Gatsby",
-    date: "1925",
-    abstract: "A novel by F. Scott Fitzgerald",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: 2,
-    title: "To Kill a Mockingbird",
-    date: "1960",
-    abstract: "A novel by Harper Lee",
-    image: "https://picsum.photos/200/300",
-  },
-  {
-    id: 3,
-    title: "1984",
-    date: "1949",
-    abstract: "A novel by George Orwell",
-    image: "https://picsum.photos/200/300",
-  },
-];
+const assetsPath = path.join(__dirname, "assets");
+
+const articlesPreview: BlogPostPreview[] = [];
+const articlesFull: BlogPost[] = [];
+
+async function readMarkdownFiles(directory: string): Promise<void> {
+  try {
+    // Read directory contents
+    const files = fs.readdirSync(directory);
+
+    // Filter markdown files
+    const markdownFiles = files.filter(
+      (file) => path.extname(file).toLowerCase() === ".md"
+    );
+
+    let id = 0;
+    for (const file of markdownFiles) {
+      const filePath = path.join(directory, file);
+      const nonParsedContent = fs.readFileSync(filePath, "utf-8");
+
+      const { content, metadata } = await metadataParser(nonParsedContent);
+
+      articlesPreview.push({
+        id: id++,
+        title: metadata.title,
+        abstract: metadata.abstract,
+        path: transformTitleToPath(metadata.title),
+        date: metadata.date,
+        image: metadata.image,
+        tags: metadata.tags,
+        authorname: metadata.authorname,
+        authorimage: metadata.authorimage,
+      });
+
+      articlesFull.push({
+        content: content,
+        id: id,
+        title: metadata.title,
+        date: metadata.date,
+        image: metadata.image,
+        tags: metadata.tags,
+        abstract: metadata.abstract,
+        authorname: metadata.authorname,
+        authorimage: metadata.authorimage,
+      });
+    }
+  } catch (error) {
+    console.error("Error reading directory:", error);
+  }
+}
+readMarkdownFiles(path.join(__dirname, "articles"));
 
 app.get("/articles", (_: Request, res: Response) => {
-  articles.forEach((article) => {
-    article.path = transformTitleToPath(article.title);
-  });
-  res.json(articles);
+  res.json(articlesPreview);
 });
 
 app.get("/article/:path", (req: Request, res: Response) => {
-  const article = articles.find(
+  const article = articlesFull.find(
     (article) => transformTitleToPath(article.title) === req.params.path
   );
 
   if (article) {
     res.json(article);
   } else {
-    const levensteinArticle = articles
+    const levensteinArticle = articlesFull
       .map((article) => {
         return {
           article,
@@ -66,6 +93,8 @@ app.get("/article/:path", (req: Request, res: Response) => {
     res.status(404).json(levensteinArticle?.article);
   }
 });
+
+app.use("/assets", express.static(assetsPath));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
