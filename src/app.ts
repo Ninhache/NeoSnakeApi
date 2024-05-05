@@ -20,13 +20,11 @@ const articlesFull: BlogPost[] = [];
 
 async function readMarkdownFiles(directory: string): Promise<void> {
   try {
-    // Read directory contents
     const files = fs.readdirSync(directory);
 
-    // Filter markdown files
-    const markdownFiles = files.filter(
-      (file) => path.extname(file).toLowerCase() === ".md"
-    );
+    const markdownFiles = files
+      .filter((file) => path.extname(file).toLowerCase() === ".md")
+      .filter((file) => !file.startsWith("_"));
 
     let id = 0;
     for (const file of markdownFiles) {
