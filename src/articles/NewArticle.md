@@ -4,76 +4,38 @@ tags: [article]
 date: 2024-05-04
 authorname: Cobra's team
 authorimage: assets/discord.jpg
-abstract: A brand new article to test the blog
+abstract: A brand new article to test the blog, but with a "big" abstract, to see how it looks. Enjoy!.. It's not big enough, let's add some more text to make it bigger. Now it's big enough. Big Enjoy!
 image: assets/tropical_bird.jpg
 ---
 
-# Landing pages drafts
+# Welcome Gamers to PitSnake!
 
-Let's explore the drafts feature!
+Hello, gaming enthusiasts, and welcome to the official blog for **PitSnake**! We're thrilled to have you join us on this exciting journey as we bring a classic favorite back to life with thrilling new twists.
 
----
+## What is PitSnake?
 
-## The landing page documents front-matter
+**PitSnake** is our modern take on the timeless Snake game. Designed for both nostalgia-seekers and new adventurers, our game aims to provide hours of fun with enhanced graphics, challenging levels, and interactive gameplay features that go beyond the simple joys of the original snake game.
 
-Let's create a dummy landing page document.
+## Why a Blog?
 
-```markdown
----
-title: LP
-metadescription: Meta description
----
+This blog will serve as your go-to spot for all things **PitSnake**. Whether it's behind-the-scenes insights, updates on development progress, feature deep dives, or release notes, we plan to keep you informed and involved every step of the way.
 
-Hello world!
-```
+### What to Expect from Our Updates
 
-By default, this document will not be a draft.
+- **Development Logs:** Get a peek into our development process, the challenges we face, and how we solve them.
+- **Feature Highlights:** Detailed posts about new gameplay features, mechanics, and the technologies we use.
+- **Release Notes:** Stay updated with the latest patches, updates, and changes.
+- **Community Spotlights:** Features on players, fan art, and community events.
 
-You can tweak it to enable the draft feature just like so:
+## Get Involved
 
-```markdown
----
-draft: true
-title: LP
-metadescription: Meta description
----
+Your feedback is crucial to making **PitSnake** the best it can be. We encourage you to leave comments, send us messages, and let us know what you love, what you don't, and what you hope to see in the future of the game.
 
-Hello world!
-```
+## Stay Connected
 
-Because of a weird Contentlayer bug, keep the `draft` field at the top of the document properties. Otherwise, it could break its parsing on Windows.
+Follow us on [Twitter](#), [Facebook](#), and [Instagram](#) to stay updated with our latest posts and announcements. Don't forget to subscribe to our newsletter for exclusive content and sneak peeks!
 
-## The Landing Pages Config file
+Thank you for joining us at the very start of this adventure. Keep an eye on this space for more updates, and let's make **PitSnake** a game to remember together!
 
-It is possible to toggle the presence of drafts in the production thanks to the [_landing page config file_.](/src/config/landingPages.ts)
-
-Let:
-
-```ts
-// src/config/landingPages.ts
-const LandingPagesConfig: LandingPagesConfigType = {
-  // * ...
-  ENABLE_DRAFTS_IN_PROD: false,
-  // * ...
-} as const;
-```
-
-Become:
-
-```ts
-// src/config/landingPages.ts
-const LandingPagesConfig: LandingPagesConfigType = {
-  // * ...
-  ENABLE_DRAFTS_IN_PROD: true,
-  // * ...
-} as const;
-```
-
-Then, let's build again!  
-You will see that more static pages will be generated automatically and that the drafts will be shown in the built app.
-
-That's all!
-
----
-
-Happy coding! :)
+Happy gaming,
+**The PitSnake Team**
