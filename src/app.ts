@@ -1,10 +1,9 @@
-import fs from "fs";
-import path from "path";
-import express, { Request, Response } from "express";
 import cors from "cors";
-import { transformTitleToPath } from "./util/BlogUtil";
-import { damerDamerauLevenshteinDistance } from "./util/Math";
+import express, { Request, Response } from "express";
+import fs, { promises as fsPromises } from "fs";
+import path from "path";
 import { BlogPost, BlogPostPreview } from "./@types/BlogPosts";
+import { transformTitleToPath } from "./util/BlogUtil";
 import { metadataParser } from "./util/MetadataParser";
 
 const app = express();
@@ -18,7 +17,7 @@ const assetsPath = path.join(__dirname, "assets");
 const articlesPreview: BlogPostPreview[] = [];
 const articlesFull: BlogPost[] = [];
 
-async function readMarkdownFiles(directory: string): Promise<void> {
+async function loadMarkdownFiles(directory: string): Promise<void> {
   try {
     const files = fs.readdirSync(directory);
 
@@ -61,35 +60,53 @@ async function readMarkdownFiles(directory: string): Promise<void> {
     console.error("Error reading directory:", error);
   }
 }
-readMarkdownFiles(path.join(__dirname, "articles"));
+
+async function getLevels(): Promise<string[]> {
+  try {
+    const files = await fsPromises.readdir(`${assetsPath}/level/local`);
+    const levelsId = files
+      .filter((file) => path.extname(file).toLowerCase() === ".json")
+      .map((file) => file.split(".")[0].split("_")[1]);
+
+    return levelsId;
+  } catch (err) {
+    console.error("Error reading directory:", err);
+    throw err;
+  }
+}
+
+async function getLevel(id: number): Promise<object> {
+  try {
+    const data = await fsPromises.readFile(
+      `${assetsPath}/level/local/level_${id}.json`,
+      "utf-8"
+    );
+    return JSON.parse(data);
+  } catch (err) {
+    console.error("Error reading or parsing file:", err);
+    throw err;
+  }
+}
 
 app.get("/articles", (_: Request, res: Response) => {
   res.json(articlesPreview);
 });
 
-app.get("/article/:path", (req: Request, res: Response) => {
-  const article = articlesFull.find(
-    (article) => transformTitleToPath(article.title) === req.params.path
-  );
+app.get("/levels", (_: Request, res: Response) => {
+  getLevels().then((levels) => {
+    res.json(levels);
+  });
+});
 
-  if (article) {
-    res.json(article);
-  } else {
-    const levensteinArticle = articlesFull
-      .map((article) => {
-        return {
-          article,
-          distance: damerDamerauLevenshteinDistance(
-            transformTitleToPath(article.title),
-            req.params.path
-          ),
-        };
-      })
-      .sort((a, b) => a.distance - b.distance)
-      .find((article) => article);
-
-    res.status(404).json(levensteinArticle?.article);
-  }
+app.get("/level/:id", (req: Request, res: Response) => {
+  getLevel(parseInt(req.params.id))
+    .then((level) => {
+      res.json(level);
+    })
+    .catch((_) => {
+      res.status(404);
+      res.json({ error: "Level not found" });
+    });
 });
 
 app.use("/assets", express.static(assetsPath));
