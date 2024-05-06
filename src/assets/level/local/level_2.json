@@ -1,0 +1,36 @@
+{
+  "options": {
+    "width": 800,
+    "height": 800,
+    "cellSize": 20,
+    "name": "Tutorial 2"
+  },
+  "snake": {
+    "startPosition": { "x": 5, "y": 5 },
+    "direction": "Right",
+    "length": 3
+  },
+  "gameObject": [
+    { "x": 0, "y": 0, "type": "OBa" },
+    { "x": 0, "y": 1, "type": "OBa" },
+    { "x": 0, "y": 2, "type": "OBa" },
+    { "x": 0, "y": 3, "type": "OBa" },
+    { "x": 0, "y": 4, "type": "OBa" },
+    { "x": 0, "y": 5, "type": "OBa" },
+    { "x": 0, "y": 6, "type": "OBa" },
+    { "x": 0, "y": 7, "type": "OBa" },
+    { "x": 0, "y": 8, "type": "OBa" },
+    { "x": 0, "y": 10, "type": "OBa" },
+    { "x": 0, "y": 11, "type": "OBa" },
+    { "x": 0, "y": 12, "type": "OBa" },
+
+    { "x": 10, "y": 10, "type": "FBa" },
+    { "x": 30, "y": 35, "type": "FBa" },
+    { "x": 20, "y": 20, "type": "FBi" },
+    { "x": 15, "y": 20, "type": "OBa" },
+    { "x": 0, "y": 10, "type": "ODi" },
+    { "x": 1, "y": 10, "type": "ODi" },
+    { "x": 2, "y": 10, "type": "ODi" },
+    { "x": 3, "y": 10, "type": "ODi" }
+  ]
+}
