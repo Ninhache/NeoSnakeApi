@@ -2,7 +2,7 @@
   "options": {
     "width": 800,
     "height": 800,
-    "cellSize": 10,
+    "cellSize": 20,
     "name": "Tutorial 1"
   },
   "snake": {
