@@ -1,3 +1,5 @@
+src/assets/level/online/
+
 # https://github.com/microsoft/TypeScript/blob/main/.gitignore
 node_modules/
 .node_modules/
