@@ -1,5 +1,5 @@
 ---
-title: string
+title: string # If the title is updated in the future, you will need to reload API
 tags: [string]
 date: 1970-01-01
 authorname: string
