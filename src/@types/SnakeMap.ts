@@ -1,35 +1,67 @@
-export type Coordinates = {
-  x: number;
-  y: number;
-};
+import { z } from "zod";
 
-export type DirectionType = "Up" | "Down" | "Left" | "Right";
+const coordinatesSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+});
+export type Coordinates = z.infer<typeof coordinatesSchema>;
 
-export type foodType = "FBa" | "FBi";
-export type obstacleType = "OBa" | "ODi";
-export type gameObjectType = foodType | obstacleType;
+const directionType = ["Up", "Down", "Left", "Right"] as const;
 
-export interface SnakeMapData {
-  options: {
-    width: 800;
-    height: 800;
-    cellSize: number;
-    name: string;
-  };
-  snake: {
-    startPosition: Coordinates;
-    direction: DirectionType;
-    length: number | 3;
-  };
-  gameObject: {
-    x: number;
-    y: number;
-    type: gameObjectType;
-  }[];
+const directionSchema = z
+  .enum(directionType)
+  .refine((dir) => directionType.includes(dir), {
+    message: "Invalid direction",
+  });
+export type DirectionType = z.infer<typeof directionSchema>;
+
+const foodType = ["FBa", "FBi", "FDe"] as const;
+const FoodSchema = z.enum(foodType).refine((food) => foodType.includes(food), {
+  message: "Invalid food type",
+});
+export type FoodType = z.infer<typeof FoodSchema>;
+
+const obstacleType = ["OBa", "ODi"] as const;
+const ObstacleSchema = z
+  .enum(obstacleType)
+  .refine((obstacle) => obstacleType.includes(obstacle), {
+    message: "Invalid obstacle type",
+  });
+export type ObstacleType = z.infer<typeof ObstacleSchema>;
+
+const gameObjectTypeSchema = z.union([FoodSchema, ObstacleSchema]);
+export type GameObjectType = z.infer<typeof gameObjectTypeSchema>;
+
+export const snakeMapDataSchema = z.object({
+  id: z.string(),
+  options: z.object({
+    width: z.literal(800),
+    height: z.literal(800),
+    cellSize: z.number(),
+    name: z.string(),
+  }),
+  snake: z.object({
+    startPosition: coordinatesSchema,
+    direction: directionSchema,
+    length: z.union([z.literal(3), z.number().max(100)]),
+  }),
+  gameObject: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      type: gameObjectTypeSchema,
+    })
+  ),
+});
+
+export type SnakeMapData = z.infer<typeof snakeMapDataSchema>;
+
+export interface UserMetadata {
+  date: Date;
+  uuid: string;
 }
 
-export interface NextFrameInfo {
-  snakeHasMoved: boolean;
-}
-
-export type SnakeMapType = "LOADED" | "LOADING" | "ERROR";
+/**
+ * Defining a map that has been uploaded by a user
+ */
+export type UserSnakeMapData = SnakeMapData & UserMetadata;
