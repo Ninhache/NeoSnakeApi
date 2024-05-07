@@ -1,8 +1,10 @@
 import cors from "cors";
 import express from "express";
 import path from "path";
+import { configDotenv } from "dotenv";
 
 const app = express();
+configDotenv();
 
 import articleRouter from "./routes/article";
 import levelRouter from "./routes/level";

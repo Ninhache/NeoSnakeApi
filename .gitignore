@@ -1,4 +1,5 @@
 assets/level/online/
+.env
 
 # https://github.com/microsoft/TypeScript/blob/main/.gitignore
 node_modules/
