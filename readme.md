@@ -15,6 +15,8 @@ cd SnakeAPI
 yarn
 ```
 
+---
+
 **Then** you need to create a `.env` file at the root of the project with the following skeleton :
 
 ```bash
@@ -23,7 +25,17 @@ PORT=8080
 POSTGRES_DB=____
 POSTGRES_USER=____
 POSTGRES_PASSWORD=____
+
+JWT_SECRET=____
 ```
+
+> **NOTE** : You can generate a **JWT_SECRET** using the following command :
+>
+> ```bash
+> node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+> ```
+
+---
 
 You **finally** need to create the docker container through the following commands :
 
