@@ -33,7 +33,7 @@ const gameObjectTypeSchema = z.union([FoodSchema, ObstacleSchema]);
 export type GameObjectType = z.infer<typeof gameObjectTypeSchema>;
 
 export const snakeMapDataSchema = z.object({
-  id: z.string(),
+  uuid: z.string(),
   options: z.object({
     width: z.literal(800),
     height: z.literal(800),
@@ -55,13 +55,3 @@ export const snakeMapDataSchema = z.object({
 });
 
 export type SnakeMapData = z.infer<typeof snakeMapDataSchema>;
-
-export interface UserMetadata {
-  date: Date;
-  uuid: string;
-}
-
-/**
- * Defining a map that has been uploaded by a user
- */
-export type UserSnakeMapData = SnakeMapData & UserMetadata;
