@@ -89,7 +89,7 @@ levelRouter.post(
   async (req: Request, res: Response) => {
     try {
       const data: unknown = req.body;
-      console.log("LEVEL", data);
+
       const snakeMapData: SnakeMapData = snakeMapDataSchema.parse(data);
 
       const jwt = jwtDecode(req.headers.authorization || "");

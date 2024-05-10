@@ -1,5 +1,4 @@
 import express, { Request, Response } from "express";
-import { getLevel, getLevels } from "../services/level";
 import { transformTitleToPath } from "../util/BlogUtil";
 import { blogFull, blogPostsPreview } from "../services/article";
 import { damerDamerauLevenshteinDistance } from "../util/Math";

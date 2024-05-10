@@ -172,8 +172,6 @@ authRouter.post("/refresh", async (req, res) => {
   try {
     const isRefreshTokenValid = await verify(currentRefreshToken);
 
-    console.log("isRefreshTokenValid", isRefreshTokenValid);
-
     if (typeof isRefreshTokenValid !== "object") {
       sendApiResponse<ErrorResponse>(res, 403, {
         success: false,

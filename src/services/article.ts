@@ -91,12 +91,8 @@ export async function removeArticle(filePath: string) {
     (_blog) => _blog.path === transformTitleToPath(metadata.title)
   );
 
-  console.log("trying to remove article", fileName);
-
   if (blog !== undefined) {
     const index = blogPostsPreview.indexOf(blog);
     blogPostsPreview.splice(index, 1);
-
-    console.log(`Removed article: ${fileName}`);
   }
 }
