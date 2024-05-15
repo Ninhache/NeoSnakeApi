@@ -1,7 +1,8 @@
 import { Model, Optional } from "sequelize";
+import { DefaultMapCompletion } from "./MapCompletion";
 
 interface DefaultMapsAttributes {
-  id: number;
+  id: string;
   map_data: string;
 }
 
@@ -12,6 +13,8 @@ export class DefaultMap
   extends Model<DefaultMapsAttributes, DefaultMapsCreationAttributes>
   implements DefaultMapsAttributes
 {
-  public id!: number;
+  public id!: string;
   public map_data!: string;
+
+  public completions?: DefaultMapCompletion[];
 }
