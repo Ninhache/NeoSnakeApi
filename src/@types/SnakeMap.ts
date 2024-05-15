@@ -32,8 +32,24 @@ export type ObstacleType = z.infer<typeof ObstacleSchema>;
 const gameObjectTypeSchema = z.union([FoodSchema, ObstacleSchema]);
 export type GameObjectType = z.infer<typeof gameObjectTypeSchema>;
 
-export const snakeMapDataSchema = z.object({
-  uuid: z.string(),
+export const scenarioFruitsSchema = z.object({
+  actualPosition: coordinatesSchema,
+  futurePosition: z.array(coordinatesSchema),
+  type: FoodSchema,
+});
+
+export const scenarioMapDataSchema = z.object({
+  fruits: z.array(scenarioFruitsSchema),
+  obstacles: z.array(
+    z.object({
+      x: z.number(),
+      y: z.number(),
+      type: ObstacleSchema,
+    })
+  ),
+});
+
+export const scenarioDataSchema = z.object({
   options: z.object({
     width: z.literal(800),
     height: z.literal(800),
@@ -45,13 +61,8 @@ export const snakeMapDataSchema = z.object({
     direction: directionSchema,
     length: z.union([z.literal(3), z.number().max(100)]),
   }),
-  gameObject: z.array(
-    z.object({
-      x: z.number(),
-      y: z.number(),
-      type: gameObjectTypeSchema,
-    })
-  ),
+  maps: z.array(scenarioMapDataSchema),
+  uuid: z.string(),
 });
 
-export type SnakeMapData = z.infer<typeof snakeMapDataSchema>;
+export type ScenarioData = z.infer<typeof scenarioDataSchema>;

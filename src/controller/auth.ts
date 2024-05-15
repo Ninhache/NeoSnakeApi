@@ -157,8 +157,8 @@ authRouter.post(
   }
 );
 
-authRouter.post("/refresh", async (req, res) => {
-  const currentRefreshToken = req.body.refreshToken;
+authRouter.get("/refresh", async (req, res) => {
+  const currentRefreshToken = req.headers["authorization"];
 
   if (currentRefreshToken === undefined) {
     sendApiResponse<ErrorResponse>(res, 400, {

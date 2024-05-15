@@ -12,7 +12,7 @@ export class User
   extends Model<UserAttributes, UserCreationAttributes>
   implements UserAttributes
 {
-  public id!: number; // using '!' to assure TypeScript that these fields will be initialized
+  public id!: number;
   public username!: string;
   public password!: string;
 }

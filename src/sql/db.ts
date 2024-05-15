@@ -1,6 +1,9 @@
-import pg from "pg";
 import { DataTypes, Sequelize } from "sequelize";
 import { DefaultMap } from "../@types/DefaultMap";
+import {
+  DefaultMapCompletion,
+  OnlineMapCompletion,
+} from "../@types/MapCompletion";
 import { OnlineMap } from "../@types/OnlineMap";
 import { User } from "../@types/User";
 
@@ -40,14 +43,13 @@ export const Users = User.init(
     timestamps: false,
   }
 );
-Users.sync();
 
 export const DefaultMaps = DefaultMap.init(
   {
     id: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.UUID,
       primaryKey: true,
-      autoIncrement: true,
+      defaultValue: DataTypes.UUIDV4,
     },
     map_data: {
       type: DataTypes.JSON,
@@ -60,7 +62,6 @@ export const DefaultMaps = DefaultMap.init(
     timestamps: false,
   }
 );
-DefaultMaps.sync();
 
 export const OnlineMaps = OnlineMap.init(
   {
@@ -92,12 +93,102 @@ export const OnlineMaps = OnlineMap.init(
     timestamps: false,
   }
 );
-OnlineMaps.sync();
 
-// /* Relationships */
+export const OnlineMapCompletions = OnlineMapCompletion.init(
+  {
+    userId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: Users,
+        key: "id",
+      },
+    },
+    mapId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: OnlineMap,
+        key: "id",
+      },
+    },
+    completionTime: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    completionDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize: instance,
+    modelName: "online_map_completions",
+    timestamps: false,
+  }
+);
+
+export const DefaultMapCompletions = DefaultMapCompletion.init(
+  {
+    userId: {
+      type: DataTypes.INTEGER,
+      references: {
+        model: Users,
+        key: "id",
+      },
+    },
+    mapId: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: DefaultMap,
+        key: "id",
+      },
+    },
+    completionTime: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    completionDate: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize: instance,
+    modelName: "default_map_completions",
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["userId", "mapId"],
+      },
+    ],
+  }
+);
+
+instance.sync();
+
+/* Relationships */
 
 Users.hasMany(OnlineMaps, { foreignKey: "creator_id" });
+Users.hasMany(OnlineMapCompletion, { foreignKey: "userId" });
+Users.hasMany(DefaultMapCompletion, { foreignKey: "userId" });
+
 OnlineMaps.belongsTo(Users, { foreignKey: "creator_id", as: "creator" });
+OnlineMaps.hasMany(OnlineMapCompletion, { foreignKey: "mapId" });
+
+OnlineMapCompletions.belongsTo(Users, { foreignKey: "userId" });
+OnlineMapCompletions.belongsTo(OnlineMaps, { foreignKey: "mapId" });
+
+DefaultMaps.hasMany(DefaultMapCompletion, {
+  foreignKey: "mapId",
+  as: "completions",
+});
+
+DefaultMapCompletions.belongsTo(Users, { foreignKey: "userId" });
+DefaultMapCompletions.belongsTo(DefaultMaps, { foreignKey: "mapId" });
 
 instance.authenticate().then(() => {
   console.log("Connection has been established successfully.");
