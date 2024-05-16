@@ -22,7 +22,7 @@ import { sendApiResponse } from "../util/ExpressUtil";
 
 const levelRouter = express.Router();
 
-levelRouter.get("/preview", async (req: Request, res: Response) => {
+levelRouter.get("/campaign/preview", async (req: Request, res: Response) => {
   const accessToken = req.headers["authorization"];
 
   if (!accessToken) {
@@ -543,7 +543,36 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
 
     const { page, limit } = validatedFilter;
 
-    const jwt = jwtDecode(req.headers.authorization || "");
+    const accessToken = req.headers["authorization"];
+
+    if (!accessToken) {
+      await OnlineMaps.findAll({
+        attributes: ["id", "map_data"],
+      }).then((maps) => {
+        const result = maps.map((map) => {
+          const data = JSON.parse(map.map_data) as ScenarioData;
+          const { options } = data;
+          const preview = data.maps.shift();
+          return {
+            id: map.id,
+            preview: { options, ...preview },
+            name: data.options.name,
+            completed: false,
+          };
+        });
+
+        sendApiResponse(res, 200, {
+          success: true,
+          message: "Levels found",
+          statusCode: 200,
+          data: result,
+        });
+      });
+
+      return;
+    }
+
+    const jwt = jwtDecode(accessToken || "");
 
     if (!("id" in jwt)) {
       sendApiResponse(res, 400, {
