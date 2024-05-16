@@ -60,7 +60,7 @@ export const scenarioDataSchema = z.object({
   snake: z.object({
     startPosition: coordinatesSchema,
     direction: directionSchema,
-    length: z.union([z.literal(3), z.number().max(100)]),
+    length: z.union([z.literal(3), z.number().max(999)]),
   }),
   maps: z.array(scenarioMapDataSchema),
   uuid: z.string(),
