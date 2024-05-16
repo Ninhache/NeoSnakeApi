@@ -22,6 +22,13 @@ export const DefaultMapCompletionSchema = z.object({
   completionDate: z.number(),
 });
 
+export const OnlineMapCompletionSchema = z.object({
+  userId: z.number(),
+  mapId: z.string(),
+  completionTime: z.number(),
+  completionDate: z.number(),
+});
+
 export class OnlineMapCompletion extends Model {
   public userId!: number;
   public mapId!: string;

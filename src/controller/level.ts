@@ -8,6 +8,7 @@ import { ErrorResponse } from "../@types/ApiResponse";
 import {
   DefaultMapCompletion,
   DefaultMapCompletionSchema,
+  OnlineMapCompletionSchema,
 } from "../@types/MapCompletion";
 import { OnlineMapFilterSchema } from "../@types/OnlineMap";
 import {
@@ -90,7 +91,110 @@ levelRouter.get("/preview", async (req: Request, res: Response) => {
 });
 
 levelRouter.post(
+  "/online/completion",
+  protectedMiddleware,
+  async (req: Request, res: Response) => {
+    const accessToken = req.headers["authorization"];
+
+    if (!accessToken) {
+      sendApiResponse(res, 400, {
+        success: false,
+        message: "Invalid token",
+        statusCode: 400,
+      });
+      return;
+    }
+
+    let userId = null;
+    try {
+      const { id } = jwtDecode(accessToken) as { id: number };
+      userId = id;
+    } catch (error) {}
+
+    if (!userId) {
+      sendApiResponse<ErrorResponse>(res, 400, {
+        success: false,
+        message: "Invalid token",
+        statusCode: 400,
+      });
+      return;
+    }
+
+    const data: unknown = { userId, ...req.body };
+    let validatedData = null;
+
+    try {
+      validatedData = OnlineMapCompletionSchema.parse(data);
+    } catch (_) {}
+
+    if (validatedData === null) {
+      sendApiResponse<ErrorResponse>(res, 400, {
+        success: false,
+        message: "Invalid data",
+        statusCode: 400,
+      });
+      return;
+    }
+
+    try {
+      const existingCompletion = await OnlineMapCompletions.findOne({
+        where: {
+          userId: userId,
+          mapId: validatedData.mapId,
+        },
+      });
+
+      if (existingCompletion) {
+        if (
+          validatedData.completionTime <
+          new Date(existingCompletion.completionTime).getTime()
+        ) {
+          await existingCompletion.update({
+            completionTime: new Date(validatedData.completionTime),
+            completionDate: new Date(validatedData.completionDate),
+          });
+          sendApiResponse(res, 200, {
+            success: true,
+            message: "Level completion updated",
+            statusCode: 200,
+          });
+          return;
+        } else {
+          sendApiResponse(res, 200, {
+            success: true,
+            message: "Existing completion is faster",
+            statusCode: 200,
+          });
+          return;
+        }
+      } else {
+        await OnlineMapCompletions.create({
+          userId: validatedData.userId,
+          mapId: validatedData.mapId,
+          completionTime: new Date(validatedData.completionTime),
+          completionDate: new Date(validatedData.completionDate),
+        });
+        sendApiResponse(res, 201, {
+          success: true,
+          message: "Level completion registered",
+          statusCode: 201,
+        });
+        return;
+      }
+    } catch (err) {
+      sendApiResponse(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
+      return;
+    }
+  }
+);
+
+levelRouter.post(
   "/campaign/completion",
+  protectedMiddleware,
   async (req: Request, res: Response) => {
     const accessToken = req.headers["authorization"];
 
@@ -312,6 +416,31 @@ levelRouter.delete(
   }
 );
 
+levelRouter.get("/online/:id", async (req: Request, res: Response) => {
+  OnlineMaps.findOne({
+    where: {
+      id: req.params.id,
+    },
+  }).then((map) => {
+    if (!map) {
+      sendApiResponse(res, 404, {
+        success: false,
+        message: "Map not found",
+        statusCode: 404,
+      });
+      return;
+    }
+
+    sendApiResponse(res, 200, {
+      success: true,
+      message: "Map found",
+      statusCode: 200,
+      data: map.map_data,
+    });
+    return;
+  });
+});
+
 levelRouter.get(
   "/create",
   protectedMiddleware,
@@ -462,6 +591,9 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
           // @ts-ignore
           creatorName: map.creator.username,
           completed,
+          completionTime: completed
+            ? map.completions?.at(0)?.completionTime
+            : null,
         };
       });
     });
