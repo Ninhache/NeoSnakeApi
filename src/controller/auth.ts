@@ -3,14 +3,14 @@ import express, { NextFunction, Request, Response } from "express";
 const authRouter = express.Router();
 
 import { ZodError, z } from "zod";
-import { handleLogin, handleRegistration } from "../services/auth";
-import { sign, verify } from "../services/jwt";
-import { sendApiResponse } from "../util/ExpressUtil";
 import {
   ErrorResponse,
   LoginSuccessResponse,
   RefreshSuccessResponse,
 } from "../@types/ApiResponse";
+import { handleLogin, handleRegistration } from "../services/auth";
+import { sign, verify } from "../services/jwt";
+import { sendApiResponse } from "../util/ExpressUtil";
 
 const signupSchema = z.object({
   username: z
@@ -183,7 +183,7 @@ authRouter.get("/refresh", async (req, res) => {
 
     const newAccessToken = await sign(
       // @ts-ignore
-      { username: isRefreshTokenValid.username },
+      { username: isRefreshTokenValid.username, id: isRefreshTokenValid.id },
       "5m"
     );
 
