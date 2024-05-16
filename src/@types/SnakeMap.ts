@@ -55,6 +55,7 @@ export const scenarioDataSchema = z.object({
     height: z.literal(800),
     cellSize: z.number(),
     name: z.string(),
+    difficulty: z.number().min(1).max(5),
   }),
   snake: z.object({
     startPosition: coordinatesSchema,

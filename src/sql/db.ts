@@ -86,6 +86,10 @@ export const OnlineMaps = OnlineMap.init(
       type: DataTypes.DATE,
       allowNull: false,
     },
+    difficulty: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     sequelize: instance,
@@ -177,10 +181,11 @@ Users.hasMany(OnlineMapCompletion, { foreignKey: "userId" });
 Users.hasMany(DefaultMapCompletion, { foreignKey: "userId" });
 
 OnlineMaps.belongsTo(Users, { foreignKey: "creator_id", as: "creator" });
-OnlineMaps.hasMany(OnlineMapCompletion, { foreignKey: "mapId" });
 
-OnlineMapCompletions.belongsTo(Users, { foreignKey: "userId" });
-OnlineMapCompletions.belongsTo(OnlineMaps, { foreignKey: "mapId" });
+OnlineMaps.hasMany(OnlineMapCompletion, {
+  foreignKey: "mapId",
+  as: "completions",
+});
 
 DefaultMaps.hasMany(DefaultMapCompletion, {
   foreignKey: "mapId",
