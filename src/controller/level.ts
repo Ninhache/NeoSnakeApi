@@ -3,31 +3,23 @@ import { jwtDecode } from "jwt-decode";
 import { ScenarioData, scenarioDataSchema } from "../@types/SnakeMap";
 import protectedMiddleware from "../middlewares/authentificationToken";
 
+import { Op } from "sequelize";
+import { ErrorResponse } from "../@types/ApiResponse";
 import {
   DefaultMapCompletion,
   DefaultMapCompletionSchema,
 } from "../@types/MapCompletion";
+import { OnlineMapFilterSchema } from "../@types/OnlineMap";
 import {
   DefaultMapCompletions,
   DefaultMaps,
+  OnlineMapCompletions,
   OnlineMaps,
   Users,
 } from "../sql/db";
 import { sendApiResponse } from "../util/ExpressUtil";
-import { ErrorResponse } from "../@types/ApiResponse";
 
 const levelRouter = express.Router();
-
-levelRouter.get("/", (_: Request, res: Response) => {
-  DefaultMaps.count().then((maps) => {
-    sendApiResponse(res, 200, {
-      success: true,
-      message: "Levels found",
-      statusCode: 200,
-      data: maps,
-    });
-  });
-});
 
 levelRouter.get("/preview", async (req: Request, res: Response) => {
   const accessToken = req.headers["authorization"];
@@ -76,10 +68,6 @@ levelRouter.get("/preview", async (req: Request, res: Response) => {
 
   const result = maps.map((map) => {
     let completed = map.completions && map.completions.length > 0;
-
-    if (!map.completions) {
-      completed = false;
-    }
 
     const data = JSON.parse(map.map_data) as ScenarioData;
     const { options } = data;
@@ -265,6 +253,235 @@ levelRouter.get(
   }
 );
 
+levelRouter.delete(
+  "/upload/:id",
+  protectedMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const jwt = jwtDecode(req.headers.authorization || "");
+
+      if (!("id" in jwt)) {
+        sendApiResponse(res, 400, {
+          success: false,
+          message: "Invalid token",
+          statusCode: 400,
+        });
+        return;
+      }
+
+      OnlineMaps.findOne({
+        where: {
+          id: req.params.id,
+        },
+      }).then((map) => {
+        if (!map) {
+          sendApiResponse(res, 404, {
+            success: false,
+            message: "Map not found",
+            statusCode: 404,
+          });
+          return;
+        }
+
+        if (map.creator_id !== jwt["id"]) {
+          sendApiResponse(res, 403, {
+            success: false,
+            message: "You don't have access to this map",
+            statusCode: 403,
+          });
+          return;
+        }
+
+        map.destroy();
+
+        sendApiResponse(res, 200, {
+          success: true,
+          message: "Map deleted",
+          statusCode: 200,
+        });
+        return;
+      });
+    } catch (error) {
+      sendApiResponse(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
+      return;
+    }
+  }
+);
+
+levelRouter.get(
+  "/create",
+  protectedMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const jwt = jwtDecode(req.headers.authorization || "");
+
+      if (!("id" in jwt)) {
+        sendApiResponse(res, 400, {
+          success: false,
+          message: "Invalid token",
+          statusCode: 400,
+        });
+        return;
+      }
+
+      const maps = await OnlineMaps.findAll({
+        // @ts-ignore
+        where: {
+          creator_id: jwt["id"],
+        },
+      }).then((maps) => {
+        return maps.map((map) => {
+          const data = JSON.parse(map.map_data) as ScenarioData;
+          const { options } = data;
+          const preview = data.maps.shift();
+          return {
+            id: map.id,
+            options,
+            ...preview,
+          };
+        });
+      });
+
+      if (maps.length === 0) {
+        sendApiResponse(res, 204, {
+          success: false,
+          message: "No maps found",
+          statusCode: 204,
+        });
+        return;
+      }
+
+      //   const { options } = maps;
+      //   const preview = data.maps.shift();
+      //   return {
+      //     id: map.id,
+      //     preview: { options, ...preview },
+      //     name: data.options.name,
+      //     completed: false,
+      //   };
+      // });
+
+      sendApiResponse(res, 200, {
+        success: true,
+        message: "Maps found",
+        statusCode: 200,
+        data: maps,
+      });
+      return;
+    } catch (error) {
+      sendApiResponse(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
+      return;
+    }
+  }
+);
+
+type WhereClause = {
+  [key: string]:
+    | {
+        [Op.like]?: string;
+      }
+    | {
+        [Op.eq]?: number | string | boolean;
+      }
+    | boolean
+    | string;
+};
+
+levelRouter.get("/upload", async (req: Request, res: Response) => {
+  try {
+    const validatedFilter = OnlineMapFilterSchema.parse(req.query);
+
+    const whereClause: WhereClause = {};
+    if (validatedFilter.name) {
+      whereClause["name"] = {
+        [Op.like]: `%${validatedFilter.name}%`,
+      };
+    }
+
+    if (validatedFilter.difficulty) {
+      whereClause["difficulty"] = {
+        [Op.eq]: validatedFilter.difficulty,
+      };
+    }
+
+    const { page, limit } = validatedFilter;
+
+    const jwt = jwtDecode(req.headers.authorization || "");
+
+    if (!("id" in jwt)) {
+      sendApiResponse(res, 400, {
+        success: false,
+        message: "Invalid token",
+        statusCode: 400,
+      });
+      return;
+    }
+
+    const { id } = jwt;
+
+    const maps = await OnlineMaps.findAll({
+      where: whereClause,
+      limit,
+      offset: (page - 1) * limit,
+      include: [
+        {
+          model: Users,
+          as: "creator",
+          attributes: ["username"],
+        },
+        {
+          model: OnlineMapCompletions,
+          as: "completions",
+          where: { userId: id },
+          required: false,
+          attributes: ["completionTime"],
+        },
+      ],
+    }).then((maps) => {
+      return maps.map((map) => {
+        let completed = map.completions && map.completions.length > 0;
+
+        if (!map.completions) {
+          completed = false;
+        }
+
+        const data = JSON.parse(map.map_data);
+        const { options } = data;
+        const preview = data.maps.shift();
+        return {
+          id: map.id,
+          preview: { options, ...preview },
+          // @ts-ignore
+          creatorName: map.creator.username,
+          completed,
+        };
+      });
+    });
+
+    sendApiResponse(res, 200, {
+      success: true,
+      message: "Maps found",
+      statusCode: 200,
+      data: maps,
+    });
+  } catch (error) {
+    sendApiResponse(res, 400, {
+      success: false,
+      message: "Invalid query parameters",
+      statusCode: 400,
+    });
+    return;
+  }
+});
+
 levelRouter.post(
   "/upload",
   protectedMiddleware,
@@ -292,6 +509,7 @@ levelRouter.post(
         created_at: new Date(),
         updated_at: new Date(),
         creator_id: jwt["id"] as number,
+        difficulty: validatedData.options.difficulty,
       });
 
       sendApiResponse(res, 200, {
