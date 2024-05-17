@@ -1,7 +1,7 @@
 ---
 title: Brand new article
 tags: [article]
-date: 2024-05-04
+date: 2024-04-26
 authorname: Cobra's team
 authorimage: assets/discord.jpg
 abstract: A brand new article to test the blog, but with a "big" abstract, to see how it looks. Enjoy!.. It's not big enough, let's add some more text to make it bigger. Now it's big enough. Big Enjoy!

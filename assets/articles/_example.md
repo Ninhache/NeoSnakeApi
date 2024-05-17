@@ -1,7 +1,7 @@
 ---
-title: string # If the title is updated in the future, you will need to reload API
+title: string
 tags: [string]
-date: 1970-01-01
+date: 1970-12-30
 authorname: string
 authorimage: assets/example.jpg
 abstract: string
