@@ -21,15 +21,33 @@ const FoodSchema = z.enum(foodType).refine((food) => foodType.includes(food), {
 });
 export type FoodType = z.infer<typeof FoodSchema>;
 
-const obstacleType = ["OBa", "ODi"] as const;
-const ObstacleSchema = z
-  .enum(obstacleType)
-  .refine((obstacle) => obstacleType.includes(obstacle), {
-    message: "Invalid obstacle type",
+const obstacleColor = [
+  "black",
+  "gray",
+  "silver",
+  "blue",
+  "teal",
+  "cyan",
+  "skyblue",
+  "indigo",
+  "purple",
+  "violet",
+  "fuchsia",
+  "pink",
+  "yellow",
+  "orange",
+  "gold",
+  "lime",
+  "green",
+] as const;
+const ObstacleColorSchema = z
+  .enum(obstacleColor)
+  .refine((obstacle) => obstacleColor.includes(obstacle), {
+    message: "Invalid obstacle color",
   });
-export type ObstacleType = z.infer<typeof ObstacleSchema>;
+export type ObstacleColor = z.infer<typeof ObstacleColorSchema>;
 
-const gameObjectTypeSchema = z.union([FoodSchema, ObstacleSchema]);
+const gameObjectTypeSchema = z.union([FoodSchema, ObstacleColorSchema]);
 export type GameObjectType = z.infer<typeof gameObjectTypeSchema>;
 
 export const scenarioFruitsSchema = z.object({
@@ -41,7 +59,7 @@ export const scenarioFruitsSchema = z.object({
 export const scenarioObstaclesSchema = z.object({
   x: z.number(),
   y: z.number(),
-  type: ObstacleSchema,
+  color: ObstacleColorSchema,
 });
 
 export const scenarioMapDataSchema = z.object({
@@ -62,7 +80,7 @@ export const scenarioDataSchema = z.object({
   snake: z.object({
     startPosition: coordinatesSchema,
     direction: directionSchema,
-    length: z.union([z.literal(3), z.number().max(999)]),
+    length: z.number().min(1).max(999),
   }),
   maps: z.array(scenarioMapDataSchema),
   uuid: z.string(),
