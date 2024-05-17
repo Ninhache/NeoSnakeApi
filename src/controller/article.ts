@@ -2,6 +2,7 @@ import express, { Request, Response } from "express";
 import { transformTitleToPath } from "../util/BlogUtil";
 import { blogFull, blogPostsPreview } from "../services/article";
 import { damerDamerauLevenshteinDistance } from "../util/Math";
+import { BlogPostPreview } from "../@types/BlogPosts";
 
 const articleRouter = express.Router();
 

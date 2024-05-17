@@ -38,25 +38,27 @@ export const scenarioFruitsSchema = z.object({
   type: FoodSchema,
 });
 
+export const scenarioObstaclesSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  type: ObstacleSchema,
+});
+
 export const scenarioMapDataSchema = z.object({
   fruits: z.array(scenarioFruitsSchema),
-  obstacles: z.array(
-    z.object({
-      x: z.number(),
-      y: z.number(),
-      type: ObstacleSchema,
-    })
-  ),
+  obstacles: z.array(scenarioObstaclesSchema),
+});
+
+export const scenarioDataOptionsSchema = z.object({
+  width: z.literal(800),
+  height: z.literal(800),
+  cellSize: z.number(),
+  name: z.string(),
+  difficulty: z.number().min(1).max(5),
 });
 
 export const scenarioDataSchema = z.object({
-  options: z.object({
-    width: z.literal(800),
-    height: z.literal(800),
-    cellSize: z.number(),
-    name: z.string(),
-    difficulty: z.number().min(1).max(5),
-  }),
+  options: scenarioDataOptionsSchema,
   snake: z.object({
     startPosition: coordinatesSchema,
     direction: directionSchema,
@@ -67,3 +69,6 @@ export const scenarioDataSchema = z.object({
 });
 
 export type ScenarioData = z.infer<typeof scenarioDataSchema>;
+export type ScenarioFruits = z.infer<typeof scenarioFruitsSchema>;
+export type ScenarioObstacles = z.infer<typeof scenarioObstaclesSchema>;
+export type ScenarioOptions = z.infer<typeof scenarioDataOptionsSchema>;

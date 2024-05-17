@@ -73,6 +73,11 @@ export function updateOrAddBlogPost(blog: BlogPost, filePath: string) {
   });
 
   blogFull.push(blog);
+
+  blogPostsPreview.sort(
+    (a: BlogPostPreview, b: BlogPostPreview) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 }
 
 export async function removeArticle(filePath: string) {
@@ -95,4 +100,9 @@ export async function removeArticle(filePath: string) {
     const index = blogPostsPreview.indexOf(blog);
     blogPostsPreview.splice(index, 1);
   }
+
+  blogPostsPreview.sort(
+    (a: BlogPostPreview, b: BlogPostPreview) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
 }
