@@ -2,6 +2,7 @@ import cors from "cors";
 import { configDotenv } from "dotenv";
 import express from "express";
 import path from "path";
+import { json, urlencoded } from "body-parser";
 
 const app = express();
 configDotenv();
@@ -14,7 +15,8 @@ import { setupWatcher } from "./services/hotLoader";
 // Not secured.. BUT it's a demo and I don't want to deal with CORS issues, since we don't know where
 // the frontend will be hosted and else, I will keep it simple... stupid
 app.use(cors());
-app.use(express.json());
+app.use(json({ limit: "10mb" }));
+app.use(urlencoded({ limit: "10mb", extended: true }));
 
 export const assetsPath = path.join(process.cwd(), "assets");
 
