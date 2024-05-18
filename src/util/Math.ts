@@ -6,10 +6,7 @@
  * @param str2
  * @returns the Levenshtein distance between str1 and str2
  */
-export function damerDamerauLevenshteinDistance(
-  str1: string,
-  str2: string
-): number {
+export function damerauLevenshteinDistance(str1: string, str2: string): number {
   let distanceMatrix: number[][] = new Array(str1.length + 1)
     .fill(0)
     .map(() => new Array(str2.length + 1).fill(0));
