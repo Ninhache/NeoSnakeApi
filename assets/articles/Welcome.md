@@ -2,10 +2,11 @@
 title: Brand new article
 tags: [article]
 date: 2024-04-26
-authorname: Cobra's team
-authorimage: assets/discord.jpg
+authorName: Cobra's team
+authorImage: assets/discord.jpg
 abstract: A brand new article to test the blog, but with a "big" abstract, to see how it looks. Enjoy!.. It's not big enough, let's add some more text to make it bigger. Now it's big enough. Big Enjoy!
 image: assets/tropical_bird.jpg
+readTime: 2
 ---
 
 # Welcome Gamers to PitSnake!

@@ -2,8 +2,8 @@
 title: string
 tags: [string]
 date: 1970-12-30
-authorname: string
-authorimage: assets/example.jpg
+authorName: string
+authorImage: assets/example.jpg
 abstract: string
 image: assets/example.jpg
 ---

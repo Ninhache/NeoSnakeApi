@@ -2,10 +2,11 @@
 title: The Mysterious Manuscript
 tags: [article, mystery, decryption]
 date: 2024-05-10
-authorname: Cobra's Team
-authorimage: assets/discord.jpg
+authorName: Cobra's Team
+authorImage: assets/discord.jpg
 abstract: Deep within the labyrinthine archives, a cryptic paper has emerged, challenging the bounds of our understanding. Join us as we delve into its secrets.
 image: assets/mysterious_paper.webp
+readTime: 2
 ---
 
 # A Glimpse into the Abyss

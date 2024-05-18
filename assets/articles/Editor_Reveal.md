@@ -2,10 +2,11 @@
 title: Discovering Cobra's Hidden Secrets
 tags: [article, gaming, development, secrets]
 date: 2024-05-17
-authorname: Cobra's Team
-authorimage: assets/discord.jpg
+authorName: Cobra's Team
+authorImage: assets/discord.jpg
 abstract: Tucked away in the code of our snake game was a secret—a powerful 2D Level Editor, now revealed for you to shape your own game worlds.
 image: assets/teaser.jpg
+readTime: 5
 ---
 
 # From the Depths of Code to the Canvas of Creation

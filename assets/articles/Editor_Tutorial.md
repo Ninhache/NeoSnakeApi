@@ -2,10 +2,11 @@
 title: Editor Beginner's Guide
 tags: [tutorial, gaming, level design]
 date: 2024-05-18
-authorname: Cobra's Team
-authorimage: assets/discord.jpg
+authorName: Cobra's Team
+authorImage: assets/discord.jpg
 abstract: This step-by-step guide will walk you through creating your very own 2D map using our newly unveiled level editor.
 image: assets/level_editor_reveal.png
+readTime: 10
 ---
 
 # Step Into the World of Custom Maps
@@ -40,11 +41,14 @@ To start, select [Create](https://snake.ninhache.fr/create) ! This will launch t
 
 ### Step 3: Placing Game Object, Bottom Right Menu
 
-Toolbar Options:
-
 ![Toolbar](assets/editor_toolbar.png)
 
-- **Draw Obstacles**: Using this pencil tool, you can draw obstacles on the map to create a challenging path for the snake to navigate.
+- **Draw Obstacles**: Using the following you will be able to place obstacles on the map to create a challenging path for the snake to navigate.
+
+  - \- Change color of the future obstacles that will get placed on the map.
+  - \- Shape of the obstacles: you can choose between square, circle and line.
+  - \- Pencil tool, you can litteraly draw the obstacles on the map.
+
 - **Add future positions**: This is also a pencil tool, that you can use to add future positions for the "opened" fruit. Remember that the snake have to eat all the fruits and their future positions to win. The tool will be disabled if there is no opened fruit.
 - **Add fruits**: Add fruits to the map, a fruit will spawn at the X and Y position you choose.
 
