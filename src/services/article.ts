@@ -29,8 +29,9 @@ export async function processMarkdownFile(filePath: string) {
       date: metadata.date,
       image: metadata.image,
       tags: metadata.tags,
-      authorname: metadata.authorname,
-      authorimage: metadata.authorimage,
+      authorName: metadata.authorName,
+      authorImage: metadata.authorImage,
+      readTime: metadata.readTime,
       content: parsedContent,
     };
 
@@ -58,7 +59,16 @@ export function updateOrAddBlogPost(blog: BlogPost, filePath: string) {
     removeArticle(filePath);
   }
 
-  const { title, abstract, date, image, tags, authorname, authorimage } = blog;
+  const {
+    title,
+    abstract,
+    date,
+    image,
+    tags,
+    authorName,
+    authorImage,
+    readTime,
+  } = blog;
 
   blogPostsPreview.push({
     id: blogPostsPreview.length,
@@ -68,8 +78,9 @@ export function updateOrAddBlogPost(blog: BlogPost, filePath: string) {
     date,
     image,
     tags,
-    authorname,
-    authorimage,
+    authorName,
+    authorImage,
+    readTime,
   });
 
   blogFull.push(blog);
