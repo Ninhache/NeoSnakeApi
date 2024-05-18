@@ -588,12 +588,9 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
     });
 
     const accessToken = req.headers["authorization"];
-    console.log("\n\n\nHELLO LE MONDE if else\n\n\n");
-    console.log(accessToken);
 
     if (!accessToken) {
-      console.log("\nGROGARS\n\n\n");
-      const maps = await OnlineMaps.findAll({
+      OnlineMaps.findAll({
         limit,
         offset: (page - 1) * limit,
         order: [["updated_at", "desc"]],
@@ -609,50 +606,51 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
             },
           },
         ],
-      }).then((maps) => {
-        return maps.map((map) => {
-          const data = JSON.parse(map.map_data) as ScenarioData;
-          const { options } = data;
-          const preview = data.maps.shift();
+      })
+        .then((maps) => {
+          return maps.map((map) => {
+            const data = JSON.parse(map.map_data) as ScenarioData;
+            const { options } = data;
+            const preview = data.maps.shift();
 
-          if (!preview) {
-            throw new Error("Problem getting the preview map data");
+            if (!preview) {
+              throw new Error("Problem getting the preview map data");
+            }
+
+            const { fruits, obstacles } = preview;
+
+            return {
+              id: map.id,
+              options,
+              fruits,
+              obstacles,
+              completed: false,
+            };
+          });
+        })
+        .then((maps) => {
+          if (maps && maps.length === 0) {
+            sendApiResponse<ErrorResponse>(res, 204, {
+              success: false,
+              message: "No maps found",
+              statusCode: 204,
+            });
+          } else {
+            sendApiResponse<GetAllUploadSuccessResponse>(res, 200, {
+              success: true,
+              message: "Levels found",
+              statusCode: 200,
+              data: maps,
+              pagination: {
+                totalItems,
+                totalPages: Math.ceil(totalItems / limit),
+                pageSize: limit,
+                currentPage: page,
+              },
+            });
           }
-
-          const { fruits, obstacles } = preview;
-
-          return {
-            id: map.id,
-            options,
-            fruits,
-            obstacles,
-            completed: false,
-          };
         });
-      });
-
-      if (maps && maps.length === 0) {
-        sendApiResponse<ErrorResponse>(res, 204, {
-          success: false,
-          message: "No maps found",
-          statusCode: 204,
-        });
-      } else {
-        sendApiResponse<GetAllUploadSuccessResponse>(res, 200, {
-          success: true,
-          message: "Levels found",
-          statusCode: 200,
-          data: maps,
-          pagination: {
-            totalItems,
-            totalPages: Math.ceil(totalItems / limit),
-            pageSize: limit,
-            currentPage: page,
-          },
-        });
-      }
     } else {
-      console.log("\n\nGAGA\n\n\n");
       const jwt = jwtDecode(accessToken || "");
 
       if (!("id" in jwt)) {
@@ -706,8 +704,6 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
 
             const { fruits, obstacles } = preview;
 
-            console.log("<<", completed);
-
             return {
               id: map.id,
               options,
@@ -728,6 +724,7 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
               statusCode: 204,
             });
           } else {
+            console.log("no maps found");
             sendApiResponse<GetCreatePreviewSuccessResponse>(res, 200, {
               success: true,
               message: "Maps found",
