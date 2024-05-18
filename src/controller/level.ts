@@ -18,7 +18,7 @@ import {
   DefaultMapCompletionSchema,
   OnlineMapCompletionSchema,
 } from "../@types/MapCompletion";
-import { OnlineMapFilterSchema } from "../@types/OnlineMap";
+import { OnlineMapFilterSchema, PaginationSchema } from "../@types/OnlineMap";
 import {
   DefaultMapCompletions,
   DefaultMaps,
@@ -488,11 +488,31 @@ levelRouter.get(
         return;
       }
 
+      const { page, limit, sortDate, difficulty } = OnlineMapFilterSchema.merge(
+        PaginationSchema
+      ).parse(req.query);
+
+      const whereClause: WhereClause = {};
+
+      if (difficulty) {
+        whereClause["difficulty"] = {
+          [Op.eq]: Number(difficulty),
+        };
+      }
+
+      whereClause["creator_id"] = jwt["id"] as string;
+
+      const totalMaps = await OnlineMaps.count({
+        where: whereClause,
+      });
+
+      const totalItems = await OnlineMaps.count({});
+
       OnlineMaps.findAll({
-        // @ts-ignore
-        where: {
-          creator_id: jwt["id"],
-        },
+        limit,
+        offset: (page - 1) * limit,
+        order: [["updated_at", sortDate]],
+        where: whereClause,
       })
         .then((maps) => {
           return maps.map((map) => {
@@ -527,6 +547,12 @@ levelRouter.get(
               message: "Maps found",
               statusCode: 200,
               data: maps,
+              pagination: {
+                totalItems: totalMaps,
+                totalPages: Math.ceil(totalMaps / limit),
+                pageSize: limit,
+                currentPage: page,
+              },
             });
           }
         });
@@ -539,6 +565,193 @@ levelRouter.get(
     }
   }
 );
+
+levelRouter.get("/create/:username", async (req: Request, res: Response) => {
+  try {
+    const { username } = req.params;
+
+    const { limit, page } = PaginationSchema.parse(req.query);
+
+    const totalItems = await OnlineMaps.count({
+      include: [
+        {
+          model: Users,
+          as: "creator",
+          attributes: ["username"],
+          where: {
+            username: {
+              [Op.eq]: `${username}`,
+            },
+          },
+        },
+      ],
+    });
+
+    const accessToken = req.headers["authorization"];
+    console.log("\n\n\nHELLO LE MONDE if else\n\n\n");
+    console.log(accessToken);
+
+    if (!accessToken) {
+      console.log("\nGROGARS\n\n\n");
+      const maps = await OnlineMaps.findAll({
+        limit,
+        offset: (page - 1) * limit,
+        order: [["updated_at", "desc"]],
+        include: [
+          {
+            model: Users,
+            as: "creator",
+            attributes: ["username"],
+            where: {
+              username: {
+                [Op.eq]: `${username}`,
+              },
+            },
+          },
+        ],
+      }).then((maps) => {
+        return maps.map((map) => {
+          const data = JSON.parse(map.map_data) as ScenarioData;
+          const { options } = data;
+          const preview = data.maps.shift();
+
+          if (!preview) {
+            throw new Error("Problem getting the preview map data");
+          }
+
+          const { fruits, obstacles } = preview;
+
+          return {
+            id: map.id,
+            options,
+            fruits,
+            obstacles,
+            completed: false,
+          };
+        });
+      });
+
+      if (maps && maps.length === 0) {
+        sendApiResponse<ErrorResponse>(res, 204, {
+          success: false,
+          message: "No maps found",
+          statusCode: 204,
+        });
+      } else {
+        sendApiResponse<GetAllUploadSuccessResponse>(res, 200, {
+          success: true,
+          message: "Levels found",
+          statusCode: 200,
+          data: maps,
+          pagination: {
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            pageSize: limit,
+            currentPage: page,
+          },
+        });
+      }
+    } else {
+      console.log("\n\nGAGA\n\n\n");
+      const jwt = jwtDecode(accessToken || "");
+
+      if (!("id" in jwt)) {
+        sendApiResponse<ErrorResponse>(res, 400, {
+          success: false,
+          message: "Invalid token",
+          statusCode: 400,
+        });
+        return;
+      }
+
+      const { id } = jwt;
+
+      OnlineMaps.findAll({
+        limit,
+        offset: (page - 1) * limit,
+        order: [["updated_at", "desc"]],
+        include: [
+          {
+            model: Users,
+            as: "creator",
+            attributes: ["username"],
+            where: {
+              username: {
+                [Op.eq]: `${username}`,
+              },
+            },
+          },
+          {
+            model: OnlineMapCompletions,
+            as: "completions",
+            required: false,
+            where: {
+              userId: id,
+            },
+            attributes: ["completionTime"],
+          },
+        ],
+      })
+        .then((maps) => {
+          return maps.map((map) => {
+            let completed = map.completions && map.completions.length > 0;
+
+            const data = JSON.parse(map.map_data) as ScenarioData;
+            const { options } = data;
+            const preview = data.maps.shift();
+
+            if (!preview) {
+              throw new Error("Problem getting the preview map data");
+            }
+
+            const { fruits, obstacles } = preview;
+
+            console.log("<<", completed);
+
+            return {
+              id: map.id,
+              options,
+              fruits,
+              obstacles,
+              completed: completed,
+              completionTime: completed
+                ? map.completions?.at(0)?.completionTime
+                : null,
+            };
+          });
+        })
+        .then((maps) => {
+          if (maps.length === 0) {
+            sendApiResponse<ErrorResponse>(res, 204, {
+              success: false,
+              message: "No maps found",
+              statusCode: 204,
+            });
+          } else {
+            sendApiResponse<GetCreatePreviewSuccessResponse>(res, 200, {
+              success: true,
+              message: "Maps found",
+              statusCode: 200,
+              data: maps,
+              pagination: {
+                totalItems: totalItems,
+                totalPages: Math.ceil(totalItems / limit),
+                pageSize: limit,
+                currentPage: page,
+              },
+            });
+          }
+        });
+    }
+  } catch (error) {
+    console.error(error);
+    sendApiResponse<ErrorResponse>(res, 500, {
+      success: false,
+      message: "Internal server error",
+      statusCode: 500,
+    });
+  }
+});
 
 type WhereClause = {
   [key: string]:
@@ -554,22 +767,25 @@ type WhereClause = {
 
 levelRouter.get("/upload", async (req: Request, res: Response) => {
   try {
-    const validatedFilter = OnlineMapFilterSchema.parse(req.query);
+    const validatedFilter = OnlineMapFilterSchema.merge(PaginationSchema).parse(
+      req.query
+    );
+
+    console.log(validatedFilter);
 
     const whereClause: WhereClause = {};
-    if (validatedFilter.name) {
-      whereClause["name"] = {
-        [Op.like]: `%${validatedFilter.name}%`,
-      };
-    }
 
     if (validatedFilter.difficulty) {
       whereClause["difficulty"] = {
-        [Op.eq]: validatedFilter.difficulty,
+        [Op.eq]: Number(validatedFilter.difficulty),
       };
     }
 
     const { page, limit } = validatedFilter;
+
+    const totalItems = await OnlineMaps.count({
+      where: whereClause,
+    });
 
     const accessToken = req.headers["authorization"];
 
@@ -577,12 +793,20 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
       OnlineMaps.findAll({
         where: whereClause,
         limit,
+        order: [["updated_at", validatedFilter.sortDate]],
         offset: (page - 1) * limit,
         include: [
           {
             model: Users,
             as: "creator",
             attributes: ["username"],
+            where: validatedFilter.name
+              ? {
+                  username: {
+                    [Op.like]: `%${validatedFilter.name}%`,
+                  },
+                }
+              : undefined,
           },
         ],
         attributes: ["id", "map_data"],
@@ -596,10 +820,14 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
             throw new Error("Problem getting the preview map data");
           }
 
+          const { fruits, obstacles } = preview;
+
           return {
             id: map.id,
             creatorName: (map as any).creator.username as string,
-            preview: { options, ...preview },
+            options,
+            fruits,
+            obstacles,
             name: data.options.name,
             completed: false,
           };
@@ -610,6 +838,12 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
           message: "Levels found",
           statusCode: 200,
           data: result,
+          pagination: {
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            pageSize: limit,
+            currentPage: page,
+          },
         });
       });
     } else {
@@ -629,12 +863,20 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
       const maps = await OnlineMaps.findAll({
         where: whereClause,
         limit,
+        order: [["updated_at", validatedFilter.sortDate]],
         offset: (page - 1) * limit,
         include: [
           {
             model: Users,
             as: "creator",
             attributes: ["username"],
+            where: validatedFilter.name
+              ? {
+                  username: {
+                    [Op.like]: `%${validatedFilter.name}%`,
+                  },
+                }
+              : undefined,
           },
           {
             model: OnlineMapCompletions,
@@ -655,10 +897,14 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
           const data = JSON.parse(map.map_data);
           const { options } = data;
           const preview = data.maps.shift();
+
+          const { fruits, obstacles } = preview;
+
           return {
             id: map.id,
-            preview: { options, ...preview },
-
+            options,
+            fruits,
+            obstacles,
             creatorName: (map as any).creator.username as string,
             completed,
             completionTime: completed
@@ -680,10 +926,17 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
           message: "Maps found",
           statusCode: 200,
           data: maps,
+          pagination: {
+            totalItems,
+            totalPages: Math.ceil(totalItems / limit),
+            pageSize: limit,
+            currentPage: page,
+          },
         });
       }
     }
   } catch (error) {
+    console.error(error);
     sendApiResponse<ErrorResponse>(res, 400, {
       success: false,
       message: "Invalid query parameters",

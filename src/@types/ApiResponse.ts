@@ -12,6 +12,15 @@ export interface ApiResponse {
   message: string;
 }
 
+export interface Pagination {
+  pagination: {
+    totalItems: number;
+    totalPages: number;
+    pageSize: number;
+    currentPage: number;
+  };
+}
+
 export interface SuccessResponse extends ApiResponse {
   success: true;
 }
@@ -42,7 +51,9 @@ export interface GetOnlineMapByIdSuccessResponse extends SuccessResponse {
   data: OnlineMap;
 }
 
-export interface GetCreatePreviewSuccessResponse extends SuccessResponse {
+export interface GetCreatePreviewSuccessResponse
+  extends SuccessResponse,
+    Pagination {
   data: {
     id: string;
     options: ScenarioOptions;
@@ -51,14 +62,15 @@ export interface GetCreatePreviewSuccessResponse extends SuccessResponse {
   }[];
 }
 
-export interface GetAllUploadSuccessResponse extends SuccessResponse {
+export interface GetAllUploadSuccessResponse
+  extends SuccessResponse,
+    Pagination {
   data: {
     id: string;
-    preview: {
-      fruits: ScenarioFruits[];
-      obstacles: ScenarioObstacles[];
-      options: ScenarioOptions;
-    };
+
+    fruits: ScenarioFruits[];
+    obstacles: ScenarioObstacles[];
+    options: ScenarioOptions;
 
     completed?: boolean | undefined;
     completionTime?: Date | null | undefined;
