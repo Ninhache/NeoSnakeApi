@@ -1,8 +1,8 @@
+import { json, urlencoded } from "body-parser";
 import cors from "cors";
 import { configDotenv } from "dotenv";
 import express from "express";
 import path from "path";
-import { json, urlencoded } from "body-parser";
 
 const app = express();
 configDotenv();
@@ -11,9 +11,11 @@ import articleRouter from "./controller/article";
 import authRouter from "./controller/auth";
 import levelRouter from "./controller/level";
 import { setupWatcher } from "./services/hotLoader";
+import { seedRoles } from "./seed";
 
 // Not secured.. BUT it's a demo and I don't want to deal with CORS issues, since we don't know where
 // the frontend will be hosted and else, I will keep it simple... stupid
+
 app.use(cors());
 app.use(json({ limit: "10mb" }));
 app.use(urlencoded({ limit: "10mb", extended: true }));
@@ -27,6 +29,14 @@ app.use("/assets", express.static(assetsPath));
 app.use("/auth", authRouter);
 
 setupWatcher(path.join(process.cwd(), "assets/articles"));
+
+seedRoles()
+  .then(() => {
+    console.log("Roles seeded");
+  })
+  .catch((error) => {
+    console.error("Failed to seed roles:", error);
+  });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
