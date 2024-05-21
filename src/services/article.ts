@@ -1,11 +1,11 @@
 import fs from "fs";
 import path from "path";
-import { BlogPost, BlogPostPreview } from "../@types/BlogPosts";
+import { ArticlePost, ArticlePreview } from "../@types/ArticlePosts";
 import { transformTitleToPath } from "../util/BlogUtil";
 import { metadataParser } from "../util/MetadataParser";
 
-export const blogPostsPreview: BlogPostPreview[] = [];
-export const blogFull: BlogPost[] = [];
+export const blogPostsPreview: ArticlePreview[] = [];
+export const blogFull: ArticlePost[] = [];
 
 let id = 0;
 export async function processMarkdownFile(filePath: string) {
@@ -21,7 +21,7 @@ export async function processMarkdownFile(filePath: string) {
     const content = fs.readFileSync(filePath, "utf-8");
     const { content: parsedContent, metadata } = await metadataParser(content);
 
-    const blog: BlogPost = {
+    const blog: ArticlePost = {
       id: id++,
       title: metadata.title,
       abstract: metadata.abstract,
@@ -41,7 +41,7 @@ export async function processMarkdownFile(filePath: string) {
   }
 }
 
-export function updateOrAddBlogPost(blog: BlogPost, filePath: string) {
+export function updateOrAddBlogPost(blog: ArticlePost, filePath: string) {
   if (path.basename(filePath).startsWith("_")) {
     return;
   }
@@ -86,7 +86,7 @@ export function updateOrAddBlogPost(blog: BlogPost, filePath: string) {
   blogFull.push(blog);
 
   blogPostsPreview.sort(
-    (a: BlogPostPreview, b: BlogPostPreview) =>
+    (a: ArticlePreview, b: ArticlePreview) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 }
@@ -113,7 +113,7 @@ export async function removeArticle(filePath: string) {
   }
 
   blogPostsPreview.sort(
-    (a: BlogPostPreview, b: BlogPostPreview) =>
+    (a: ArticlePreview, b: ArticlePreview) =>
       new Date(b.date).getTime() - new Date(a.date).getTime()
   );
 }

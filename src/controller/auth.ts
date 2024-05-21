@@ -170,7 +170,10 @@ authRouter.get("/refresh", async (req, res) => {
   }
 
   try {
-    const isRefreshTokenValid = await verify(currentRefreshToken);
+    const isRefreshTokenValid = (await verify(currentRefreshToken)) as {
+      username: string;
+      id: string;
+    };
 
     if (typeof isRefreshTokenValid !== "object") {
       sendApiResponse<ErrorResponse>(res, 403, {
@@ -182,9 +185,8 @@ authRouter.get("/refresh", async (req, res) => {
     }
 
     const newAccessToken = await sign(
-      // @ts-ignore
       { username: isRefreshTokenValid.username, id: isRefreshTokenValid.id },
-      "5m"
+      "10m"
     );
 
     sendApiResponse<RefreshSuccessResponse>(res, 201, {

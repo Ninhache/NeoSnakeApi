@@ -2,8 +2,8 @@ import express, { Request, Response } from "express";
 import { blogFull, blogPostsPreview } from "../services/article";
 import { transformTitleToPath } from "../util/BlogUtil";
 import { damerauLevenshteinDistance } from "../util/Math";
-import { ArticleFilterSchema } from "../@types/BlogPosts";
-import { PaginationSchema } from "../@types/OnlineMap";
+import { PaginationSchema } from "../schema/filters";
+import { ArticleFilterSchema } from "../schema/article";
 
 const articleRouter = express.Router();
 

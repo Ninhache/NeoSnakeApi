@@ -1,10 +1,5 @@
-import { OnlineMap } from "./OnlineMap";
-import {
-  ScenarioData,
-  ScenarioFruits,
-  ScenarioObstacles,
-  ScenarioOptions,
-} from "./SnakeMap";
+import { OnlineData, BaseFruits, BaseObstacles, BaseOptions } from "./Map";
+import { OnlineMap } from "./db/OnlineMap";
 
 export interface ApiResponse {
   success: boolean;
@@ -56,9 +51,9 @@ export interface GetCreatePreviewSuccessResponse
     Pagination {
   data: {
     id: string;
-    options: ScenarioOptions;
-    fruits: ScenarioFruits[];
-    obstacles: ScenarioObstacles[];
+    options: BaseOptions;
+    fruits: BaseFruits[];
+    obstacles: BaseObstacles[];
   }[];
 }
 
@@ -68,26 +63,26 @@ export interface GetAllUploadSuccessResponse
   data: {
     id: string;
 
-    fruits: ScenarioFruits[];
-    obstacles: ScenarioObstacles[];
-    options: ScenarioOptions;
+    fruits: BaseFruits[];
+    obstacles: BaseObstacles[];
+    options: BaseOptions;
 
     completed?: boolean | undefined;
     completionTime?: Date | null | undefined;
   }[];
 }
 
-export interface GetDefaultMapsByIdResponse extends SuccessResponse {
-  data: ScenarioData;
+export interface GetCampaignByIdResponse extends SuccessResponse {
+  data: OnlineData;
 }
 
-export interface DefaultMapsPreviewResponse extends SuccessResponse {
+export interface CampaignPreviewResponse extends SuccessResponse {
   data: {
-    id: string;
+    id: number;
     preview: {
-      fruits: ScenarioFruits[];
-      obstacles: ScenarioObstacles[];
-      options: ScenarioOptions;
+      fruits: BaseFruits[];
+      obstacles: BaseObstacles[];
+      options: BaseOptions;
     };
     name: string;
     completed: boolean;

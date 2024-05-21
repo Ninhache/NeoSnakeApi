@@ -7,7 +7,7 @@ interface AuthRequest extends Request {
   user?: string | JwtPayload;
 }
 
-function protectedMiddleware(
+function authtokenMiddleware(
   req: AuthRequest,
   res: Response,
   next: NextFunction
@@ -34,4 +34,4 @@ function protectedMiddleware(
   });
 }
 
-export default protectedMiddleware;
+export default authtokenMiddleware;

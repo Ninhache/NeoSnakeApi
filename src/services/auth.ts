@@ -4,7 +4,7 @@ import {
   LoginSuccessResponse,
   SignupSuccessResponse,
 } from "../@types/ApiResponse";
-import { Users, instance } from "../sql/db";
+import { Users, instance } from "../db/init";
 
 import { sign } from "./jwt";
 
@@ -25,8 +25,8 @@ export async function handleRegistration(
 
     await instance.query(
       `INSERT INTO
-        users (username, password)
-        VALUES ($1, crypt($2, gen_salt('bf')));`,
+        users (username, password, role_id)
+        VALUES ($1, crypt($2, gen_salt('bf')), 2);`,
       {
         bind: [username, password],
         type: QueryTypes.INSERT,
@@ -39,6 +39,7 @@ export async function handleRegistration(
       message: "Registration successful.",
     };
   } catch (e) {
+    console.error(e);
     return {
       success: false,
       statusCode: 500,
