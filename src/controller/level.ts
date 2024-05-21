@@ -33,87 +33,98 @@ import { sendApiResponse } from "../util/ExpressUtil";
 const levelRouter = express.Router();
 
 levelRouter.get("/campaign", async (req: Request, res: Response) => {
-  const accessToken = req.headers["authorization"];
+  try {
+    const accessToken = req.headers["authorization"];
 
-  if (!accessToken) {
-    await CampaignMaps.findAll({
-      attributes: ["id", "map_data"],
-    }).then((maps) => {
-      const result = maps.map((map) => {
-        const data = JSON.parse(map.map_data) as CampaignData;
-        const { options } = data;
-        const preview = data.maps.shift();
+    if (!accessToken) {
+      await CampaignMaps.findAll({
+        attributes: ["id", "map_data"],
+      }).then((maps) => {
+        const result = maps.map((map) => {
+          const data = JSON.parse(map.map_data) as CampaignData;
+          const { options } = data;
+          const preview = data.maps.shift();
 
-        if (!preview) {
-          throw new Error("Problem getting the preview map data");
+          if (!preview) {
+            throw new Error("Problem getting the preview map data");
+          }
+
+          const { fruits, obstacles } = preview;
+
+          return {
+            id: map.id,
+            preview: { options, fruits, obstacles },
+            name: data.options.name,
+            completed: false,
+          };
+        });
+
+        if (result.length === 0) {
+          sendApiResponse<ErrorResponse>(res, 204, {
+            success: false,
+            message: "No levels found",
+            statusCode: 204,
+          });
+          return;
         }
 
-        const { fruits, obstacles } = preview;
-
-        return {
-          id: map.id,
-          preview: { options, fruits, obstacles },
-          name: data.options.name,
-          completed: false,
-        };
-      });
-
-      if (result.length === 0) {
-        sendApiResponse<ErrorResponse>(res, 204, {
-          success: false,
-          message: "No levels found",
-          statusCode: 204,
+        sendApiResponse<CampaignPreviewResponse>(res, 200, {
+          success: true,
+          message: "Levels found",
+          statusCode: 200,
+          data: result,
         });
-        return;
-      }
-
-      sendApiResponse<CampaignPreviewResponse>(res, 200, {
-        success: true,
-        message: "Levels found",
-        statusCode: 200,
-        data: result,
       });
+
+      return;
+    }
+
+    const { id } = jwtDecode(accessToken) as { id: number };
+
+    const maps = await CampaignMaps.findAll({
+      include: [
+        {
+          model: CampaignMapCompletions,
+          as: "completions",
+          where: { userId: id },
+          required: false,
+          attributes: ["completionTime"],
+        },
+      ],
+      attributes: ["id", "map_data"],
     });
 
-    return;
+    const result = maps.map((map) => {
+      let completed = map.completions && map.completions.length > 0;
+
+      const data = JSON.parse(map.map_data) as CampaignData;
+      const { options } = data;
+      const preview = data.maps.shift();
+
+      return {
+        id: map.id,
+        preview: { options, ...preview },
+        completed: completed,
+        completionTime: completed
+          ? map.completions?.at(0)?.completionTime
+          : null,
+      };
+    });
+
+    sendApiResponse(res, 200, {
+      success: true,
+      message: "Levels found",
+      statusCode: 200,
+      data: result,
+    });
+  } catch (error) {
+    console.log("AAA", error);
+    sendApiResponse<ErrorResponse>(res, 500, {
+      success: false,
+      message: "Internal server error",
+      statusCode: 500,
+    });
   }
-
-  const { id } = jwtDecode(accessToken) as { id: number };
-
-  const maps = await CampaignMaps.findAll({
-    include: [
-      {
-        model: CampaignMapCompletions,
-        as: "completions",
-        where: { userId: id },
-        required: false,
-        attributes: ["completionTime"],
-      },
-    ],
-    attributes: ["id", "map_data"],
-  });
-
-  const result = maps.map((map) => {
-    let completed = map.completions && map.completions.length > 0;
-
-    const data = JSON.parse(map.map_data) as OnlineData;
-    const { options } = data;
-    const preview = data.maps.shift();
-
-    return {
-      id: map.id,
-      preview: { options, ...preview },
-      completed: completed,
-      completionTime: completed ? map.completions?.at(0)?.completionTime : null,
-    };
-  });
-
-  sendApiResponse(res, 200, {
-    success: true,
-    message: "Levels found",
-    statusCode: 200,
-    data: result,
-  });
 });
 
 levelRouter.get("/campaign/:id", (req: Request, res: Response) => {
