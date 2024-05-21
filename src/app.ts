@@ -32,7 +32,7 @@ setupWatcher(path.join(process.cwd(), "assets/articles"));
 
 seedRoles()
   .then(() => {
-    console.log("Roles seeded");
+    console.log("Seeds finished with no error");
   })
   .catch((error) => {
     console.error("Failed to seed roles:", error);

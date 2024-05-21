@@ -7,6 +7,7 @@ const roles = [
 
 export const seedRoles = async function () {
   try {
+    console.log("Seeding roles");
     await Roles.bulkCreate(roles, {
       ignoreDuplicates: true,
     });
