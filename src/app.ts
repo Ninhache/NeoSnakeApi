@@ -12,6 +12,7 @@ import authRouter from "./controller/auth";
 import levelRouter from "./controller/level";
 import { setupWatcher } from "./services/hotLoader";
 import { seedRoles } from "./seed";
+import { instance } from "./db/init";
 
 // Not secured.. BUT it's a demo and I don't want to deal with CORS issues, since we don't know where
 // the frontend will be hosted and else, I will keep it simple... stupid
@@ -30,13 +31,13 @@ app.use("/auth", authRouter);
 
 setupWatcher(path.join(process.cwd(), "assets/articles"));
 
-seedRoles()
-  .then(() => {
-    console.log("Seeds finished with no error");
-  })
-  .catch((error) => {
-    console.error("Failed to seed roles:", error);
-  });
+instance.authenticate().then(() => {
+  console.log("DB Connection has been established successfully.");
+  console.log("Seeding roles in 10 seconds !");
+  setTimeout(() => {
+    seedRoles();
+  }, 10000);
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {

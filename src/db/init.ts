@@ -226,7 +226,3 @@ CampaignMaps.hasMany(CampaignMapCompletion, {
 
 CampaignMapCompletions.belongsTo(Users, { foreignKey: "userId" });
 CampaignMapCompletions.belongsTo(CampaignMaps, { foreignKey: "mapId" });
-
-instance.authenticate().then(() => {
-  console.log("Connection has been established successfully.");
-});
