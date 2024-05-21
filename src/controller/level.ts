@@ -1,44 +1,46 @@
 import express, { Request, Response } from "express";
 import { jwtDecode } from "jwt-decode";
-import { ScenarioData, scenarioDataSchema } from "../@types/SnakeMap";
-import protectedMiddleware from "../middlewares/authentificationToken";
+
+import authtokenMiddleware from "../middlewares/authentificationToken";
 
 import { Op } from "sequelize";
 import {
-  DefaultMapsPreviewResponse,
+  CampaignPreviewResponse,
   ErrorResponse,
   GetAllUploadSuccessResponse,
+  GetCampaignByIdResponse,
   GetCreatePreviewSuccessResponse,
-  GetDefaultMapsByIdResponse,
   GetOnlineMapByIdSuccessResponse,
   SuccessResponse,
 } from "../@types/ApiResponse";
+import { CampaignMapCompletion } from "../@types/db/MapCompletion";
+
+import { CampaignData, OnlineData } from "../@types/Map";
+import adminMiddleware from "../middlewares/admin";
+import { CampaignMapCompletionSchema } from "../schema/campaign";
+import { OnlineMapFilterSchema, PaginationSchema } from "../schema/filters";
+import { campaignDataSchema, onlineDataSchema } from "../schema/map";
+import { OnlineMapCompletionSchema } from "../schema/online";
 import {
-  DefaultMapCompletion,
-  DefaultMapCompletionSchema,
-  OnlineMapCompletionSchema,
-} from "../@types/MapCompletion";
-import { OnlineMapFilterSchema, PaginationSchema } from "../@types/OnlineMap";
-import {
-  DefaultMapCompletions,
-  DefaultMaps,
+  CampaignMapCompletions,
+  CampaignMaps,
   OnlineMapCompletions,
   OnlineMaps,
   Users,
-} from "../sql/db";
+} from "../db/init";
 import { sendApiResponse } from "../util/ExpressUtil";
 
 const levelRouter = express.Router();
 
-levelRouter.get("/campaign/preview", async (req: Request, res: Response) => {
+levelRouter.get("/campaign", async (req: Request, res: Response) => {
   const accessToken = req.headers["authorization"];
 
   if (!accessToken) {
-    await DefaultMaps.findAll({
+    await CampaignMaps.findAll({
       attributes: ["id", "map_data"],
     }).then((maps) => {
       const result = maps.map((map) => {
-        const data = JSON.parse(map.map_data) as ScenarioData;
+        const data = JSON.parse(map.map_data) as CampaignData;
         const { options } = data;
         const preview = data.maps.shift();
 
@@ -65,7 +67,7 @@ levelRouter.get("/campaign/preview", async (req: Request, res: Response) => {
         return;
       }
 
-      sendApiResponse<DefaultMapsPreviewResponse>(res, 200, {
+      sendApiResponse<CampaignPreviewResponse>(res, 200, {
         success: true,
         message: "Levels found",
         statusCode: 200,
@@ -78,10 +80,10 @@ levelRouter.get("/campaign/preview", async (req: Request, res: Response) => {
 
   const { id } = jwtDecode(accessToken) as { id: number };
 
-  const maps = await DefaultMaps.findAll({
+  const maps = await CampaignMaps.findAll({
     include: [
       {
-        model: DefaultMapCompletions,
+        model: CampaignMapCompletions,
         as: "completions",
         where: { userId: id },
         required: false,
@@ -94,7 +96,7 @@ levelRouter.get("/campaign/preview", async (req: Request, res: Response) => {
   const result = maps.map((map) => {
     let completed = map.completions && map.completions.length > 0;
 
-    const data = JSON.parse(map.map_data) as ScenarioData;
+    const data = JSON.parse(map.map_data) as OnlineData;
     const { options } = data;
     const preview = data.maps.shift();
 
@@ -114,9 +116,216 @@ levelRouter.get("/campaign/preview", async (req: Request, res: Response) => {
   });
 });
 
+levelRouter.get("/campaign/:id", (req: Request, res: Response) => {
+  CampaignMaps.findOne({
+    where: {
+      id: req.params.id,
+    },
+  }).then((map) => {
+    if (!map) {
+      sendApiResponse<ErrorResponse>(res, 404, {
+        success: false,
+        message: "Map not found",
+        statusCode: 404,
+      });
+      return;
+    }
+
+    if (!map.map_data) {
+      sendApiResponse<ErrorResponse>(res, 500, {
+        success: false,
+        message: "Map data corrupted",
+        statusCode: 500,
+      });
+      return;
+    }
+
+    sendApiResponse<GetCampaignByIdResponse>(res, 200, {
+      success: true,
+      message: "Map found",
+      statusCode: 200,
+      data: JSON.parse(map.map_data) as OnlineData,
+    });
+    return;
+  });
+});
+
+levelRouter.put(
+  "/campaign/completion",
+  authtokenMiddleware,
+  async (req: Request, res: Response) => {
+    const accessToken = req.headers["authorization"];
+
+    if (!accessToken) {
+      sendApiResponse(res, 400, {
+        success: false,
+        message: "Invalid token",
+        statusCode: 400,
+      });
+      return;
+    }
+    let userId = null;
+    try {
+      const { id } = jwtDecode(accessToken) as { id: number };
+      userId = id;
+    } catch (error) {}
+
+    if (!userId) {
+      sendApiResponse<ErrorResponse>(res, 400, {
+        success: false,
+        message: "Invalid token",
+        statusCode: 400,
+      });
+      return;
+    }
+
+    const data: unknown = { userId, ...req.body };
+
+    let validatedData = null;
+    try {
+      validatedData = CampaignMapCompletionSchema.parse(data);
+    } catch (_) {}
+
+    if (validatedData === null) {
+      sendApiResponse<ErrorResponse>(res, 400, {
+        success: false,
+        message: "Invalid data",
+        statusCode: 400,
+      });
+      return;
+    }
+
+    try {
+      const existingCompletion = await CampaignMapCompletion.findOne({
+        where: {
+          userId: userId,
+          mapId: validatedData.mapId,
+        },
+      });
+
+      if (existingCompletion) {
+        if (
+          validatedData.completionTime <
+          new Date(existingCompletion.completionTime).getTime()
+        ) {
+          await existingCompletion.update({
+            completionTime: new Date(validatedData.completionTime),
+            completionDate: new Date(validatedData.completionDate),
+          });
+          sendApiResponse<SuccessResponse>(res, 200, {
+            success: true,
+            message: "Level completion updated",
+            statusCode: 200,
+          });
+          return;
+        } else {
+          sendApiResponse<SuccessResponse>(res, 200, {
+            success: true,
+            message: "Existing completion is faster",
+            statusCode: 200,
+          });
+          return;
+        }
+      } else {
+        await CampaignMapCompletions.create({
+          userId: validatedData.userId,
+          mapId: validatedData.mapId,
+          completionTime: new Date(validatedData.completionTime),
+          completionDate: new Date(validatedData.completionDate),
+        });
+        sendApiResponse<SuccessResponse>(res, 201, {
+          success: true,
+          message: "Level completion registered",
+          statusCode: 201,
+        });
+        return;
+      }
+    } catch (err) {
+      sendApiResponse(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
+      return;
+    }
+  }
+);
+
+levelRouter.put(
+  "/campaign",
+  authtokenMiddleware,
+  adminMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const data: unknown = req.body;
+      // @ts-ignore
+      console.log(data);
+      console.log("----------------------");
+      const validatedData: CampaignData = campaignDataSchema.parse(data);
+
+      const { id, ...scenarioData } = validatedData;
+
+      CampaignMaps.upsert({
+        id,
+        map_data: JSON.stringify(scenarioData),
+      }).then(() => {
+        sendApiResponse<SuccessResponse>(res, 201, {
+          success: true,
+          message: "Level uploaded",
+          statusCode: 201,
+        });
+
+        CampaignMapCompletions.destroy({
+          where: {
+            mapId: validatedData.id,
+          },
+        });
+      });
+    } catch (error) {
+      console.log(error);
+      sendApiResponse<ErrorResponse>(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
+    }
+  }
+);
+
+levelRouter.get("/online/:id", async (req: Request, res: Response) => {
+  try {
+    OnlineMaps.findOne({
+      where: {
+        id: req.params.id,
+      },
+    }).then((map) => {
+      if (!map) {
+        sendApiResponse<ErrorResponse>(res, 404, {
+          success: false,
+          message: "Map not found",
+          statusCode: 404,
+        });
+      } else {
+        sendApiResponse<GetOnlineMapByIdSuccessResponse>(res, 200, {
+          success: true,
+          message: "Map found",
+          statusCode: 200,
+          data: map,
+        });
+      }
+    });
+  } catch (error) {
+    sendApiResponse<ErrorResponse>(res, 500, {
+      success: false,
+      message: "Internal server error",
+      statusCode: 500,
+    });
+  }
+});
+
 levelRouter.post(
   "/online/completion",
-  protectedMiddleware,
+  authtokenMiddleware,
   async (req: Request, res: Response) => {
     const accessToken = req.headers["authorization"];
 
@@ -215,111 +424,9 @@ levelRouter.post(
     }
   }
 );
-
-levelRouter.post(
-  "/campaign/completion",
-  protectedMiddleware,
-  async (req: Request, res: Response) => {
-    const accessToken = req.headers["authorization"];
-
-    if (!accessToken) {
-      sendApiResponse(res, 400, {
-        success: false,
-        message: "Invalid token",
-        statusCode: 400,
-      });
-      return;
-    }
-    let userId = null;
-    try {
-      const { id } = jwtDecode(accessToken) as { id: number };
-      userId = id;
-    } catch (error) {}
-
-    if (!userId) {
-      sendApiResponse<ErrorResponse>(res, 400, {
-        success: false,
-        message: "Invalid token",
-        statusCode: 400,
-      });
-      return;
-    }
-
-    const data: unknown = { userId, ...req.body };
-
-    let validatedData = null;
-    try {
-      validatedData = DefaultMapCompletionSchema.parse(data);
-    } catch (_) {}
-
-    if (validatedData === null) {
-      sendApiResponse<ErrorResponse>(res, 400, {
-        success: false,
-        message: "Invalid data",
-        statusCode: 400,
-      });
-      return;
-    }
-
-    try {
-      const existingCompletion = await DefaultMapCompletion.findOne({
-        where: {
-          userId: userId,
-          mapId: validatedData.mapId,
-        },
-      });
-
-      if (existingCompletion) {
-        if (
-          validatedData.completionTime <
-          new Date(existingCompletion.completionTime).getTime()
-        ) {
-          await existingCompletion.update({
-            completionTime: new Date(validatedData.completionTime),
-            completionDate: new Date(validatedData.completionDate),
-          });
-          sendApiResponse(res, 200, {
-            success: true,
-            message: "Level completion updated",
-            statusCode: 200,
-          });
-          return;
-        } else {
-          sendApiResponse(res, 200, {
-            success: true,
-            message: "Existing completion is faster",
-            statusCode: 200,
-          });
-          return;
-        }
-      } else {
-        await DefaultMapCompletions.create({
-          userId: validatedData.userId,
-          mapId: validatedData.mapId,
-          completionTime: new Date(validatedData.completionTime),
-          completionDate: new Date(validatedData.completionDate),
-        });
-        sendApiResponse(res, 201, {
-          success: true,
-          message: "Level completion registered",
-          statusCode: 201,
-        });
-        return;
-      }
-    } catch (err) {
-      sendApiResponse(res, 500, {
-        success: false,
-        message: "Internal server error",
-        statusCode: 500,
-      });
-      return;
-    }
-  }
-);
-
 levelRouter.get(
   "/upload/:id",
-  protectedMiddleware,
+  authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {
       const jwt = jwtDecode(req.headers.authorization || "");
@@ -381,10 +488,9 @@ levelRouter.get(
     }
   }
 );
-
 levelRouter.delete(
   "/upload/:id",
-  protectedMiddleware,
+  authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {
       const jwt = jwtDecode(req.headers.authorization || "");
@@ -441,40 +547,9 @@ levelRouter.delete(
   }
 );
 
-levelRouter.get("/online/:id", async (req: Request, res: Response) => {
-  try {
-    OnlineMaps.findOne({
-      where: {
-        id: req.params.id,
-      },
-    }).then((map) => {
-      if (!map) {
-        sendApiResponse<ErrorResponse>(res, 404, {
-          success: false,
-          message: "Map not found",
-          statusCode: 404,
-        });
-      } else {
-        sendApiResponse<GetOnlineMapByIdSuccessResponse>(res, 200, {
-          success: true,
-          message: "Map found",
-          statusCode: 200,
-          data: map,
-        });
-      }
-    });
-  } catch (error) {
-    sendApiResponse<ErrorResponse>(res, 500, {
-      success: false,
-      message: "Internal server error",
-      statusCode: 500,
-    });
-  }
-});
-
 levelRouter.get(
   "/create",
-  protectedMiddleware,
+  authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {
       const jwt = jwtDecode(req.headers.authorization || "");
@@ -516,7 +591,7 @@ levelRouter.get(
       })
         .then((maps) => {
           return maps.map((map) => {
-            const data = JSON.parse(map.map_data) as ScenarioData;
+            const data = JSON.parse(map.map_data) as OnlineData;
             const { options } = data;
             const preview = data.maps.shift();
 
@@ -609,7 +684,7 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
       })
         .then((maps) => {
           return maps.map((map) => {
-            const data = JSON.parse(map.map_data) as ScenarioData;
+            const data = JSON.parse(map.map_data) as OnlineData;
             const { options } = data;
             const preview = data.maps.shift();
 
@@ -694,7 +769,7 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
           return maps.map((map) => {
             let completed = map.completions && map.completions.length > 0;
 
-            const data = JSON.parse(map.map_data) as ScenarioData;
+            const data = JSON.parse(map.map_data) as OnlineData;
             const { options } = data;
             const preview = data.maps.shift();
 
@@ -809,7 +884,7 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
         attributes: ["id", "map_data"],
       }).then((maps) => {
         const result = maps.map((map) => {
-          const data = JSON.parse(map.map_data) as ScenarioData;
+          const data = JSON.parse(map.map_data) as OnlineData;
           const { options } = data;
           const preview = data.maps.shift();
 
@@ -942,9 +1017,9 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
   }
 });
 
-levelRouter.post(
+levelRouter.put(
   "/upload",
-  protectedMiddleware,
+  authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {
       const jwt = jwtDecode(req.headers.authorization || "");
@@ -959,7 +1034,7 @@ levelRouter.post(
       }
 
       const data: unknown = req.body;
-      const validatedData: ScenarioData = scenarioDataSchema.parse(data);
+      const validatedData: OnlineData = onlineDataSchema.parse(data);
 
       const { uuid, ...scenarioData } = validatedData;
 
@@ -992,39 +1067,5 @@ levelRouter.post(
     }
   }
 );
-
-levelRouter.get("/:id", (req: Request, res: Response) => {
-  DefaultMaps.findOne({
-    where: {
-      id: req.params.id,
-    },
-  }).then((map) => {
-    if (!map) {
-      sendApiResponse<ErrorResponse>(res, 404, {
-        success: false,
-        message: "Map not found",
-        statusCode: 404,
-      });
-      return;
-    }
-
-    if (!map.map_data) {
-      sendApiResponse<ErrorResponse>(res, 500, {
-        success: false,
-        message: "Map data corrupted",
-        statusCode: 500,
-      });
-      return;
-    }
-
-    sendApiResponse<GetDefaultMapsByIdResponse>(res, 200, {
-      success: true,
-      message: "Map found",
-      statusCode: 200,
-      data: JSON.parse(map.map_data) as ScenarioData,
-    });
-    return;
-  });
-});
 
 export default levelRouter;

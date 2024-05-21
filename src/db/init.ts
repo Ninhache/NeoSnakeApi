@@ -1,11 +1,12 @@
 import { DataTypes, Sequelize } from "sequelize";
-import { DefaultMap } from "../@types/DefaultMap";
+import { CampaignMap } from "../@types/db/CampaignMap";
 import {
-  DefaultMapCompletion,
+  CampaignMapCompletion,
   OnlineMapCompletion,
-} from "../@types/MapCompletion";
-import { OnlineMap } from "../@types/OnlineMap";
-import { User } from "../@types/User";
+} from "../@types/db/MapCompletion";
+import { OnlineMap } from "../@types/db/OnlineMap";
+import { User } from "../@types/db/User";
+import { Role } from "../@types/db/Role";
 
 const DB = process.env.POSTGRES_DB as string;
 const USER = process.env.POSTGRES_USER as string;
@@ -14,11 +15,31 @@ const PASSWORD = process.env.POSTGRES_PASSWORD as string;
 export const instance = new Sequelize(DB, USER, PASSWORD, {
   host: "localhost",
   dialect: "postgres",
+  logging: false,
 });
 
 // instance.drop().then(() => {
 //   console.log("All tables dropped");
 // });
+
+export const Roles = Role.init(
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      primaryKey: true,
+      autoIncrement: true,
+    },
+    label: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize: instance,
+    modelName: "roles",
+    timestamps: false,
+  }
+);
 
 export const Users = User.init(
   {
@@ -36,6 +57,14 @@ export const Users = User.init(
       type: DataTypes.STRING,
       allowNull: false,
     },
+    role_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "roles",
+        key: "id",
+      },
+    },
   },
   {
     sequelize: instance,
@@ -44,12 +73,12 @@ export const Users = User.init(
   }
 );
 
-export const DefaultMaps = DefaultMap.init(
+export const CampaignMaps = CampaignMap.init(
   {
     id: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       primaryKey: true,
-      defaultValue: DataTypes.UUIDV4,
+      autoIncrement: true,
     },
     map_data: {
       type: DataTypes.JSON,
@@ -58,7 +87,7 @@ export const DefaultMaps = DefaultMap.init(
   },
   {
     sequelize: instance,
-    modelName: "default_snake_maps",
+    modelName: "campaign_snake_maps",
     timestamps: false,
   }
 );
@@ -132,7 +161,7 @@ export const OnlineMapCompletions = OnlineMapCompletion.init(
   }
 );
 
-export const DefaultMapCompletions = DefaultMapCompletion.init(
+export const CampaignMapCompletions = CampaignMapCompletion.init(
   {
     userId: {
       type: DataTypes.INTEGER,
@@ -142,10 +171,10 @@ export const DefaultMapCompletions = DefaultMapCompletion.init(
       },
     },
     mapId: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER,
       allowNull: false,
       references: {
-        model: DefaultMap,
+        model: CampaignMap,
         key: "id",
       },
     },
@@ -161,7 +190,7 @@ export const DefaultMapCompletions = DefaultMapCompletion.init(
   },
   {
     sequelize: instance,
-    modelName: "default_map_completions",
+    modelName: "campaign_map_completions",
     timestamps: false,
     indexes: [
       {
@@ -178,7 +207,10 @@ instance.sync();
 
 Users.hasMany(OnlineMaps, { foreignKey: "creator_id" });
 Users.hasMany(OnlineMapCompletion, { foreignKey: "userId" });
-Users.hasMany(DefaultMapCompletion, { foreignKey: "userId" });
+Users.hasMany(CampaignMapCompletion, { foreignKey: "userId" });
+
+Users.belongsTo(Roles, { foreignKey: "role_id" });
+Roles.hasMany(Users, { foreignKey: "role_id" });
 
 OnlineMaps.belongsTo(Users, { foreignKey: "creator_id", as: "creator" });
 
@@ -187,13 +219,13 @@ OnlineMaps.hasMany(OnlineMapCompletion, {
   as: "completions",
 });
 
-DefaultMaps.hasMany(DefaultMapCompletion, {
+CampaignMaps.hasMany(CampaignMapCompletion, {
   foreignKey: "mapId",
   as: "completions",
 });
 
-DefaultMapCompletions.belongsTo(Users, { foreignKey: "userId" });
-DefaultMapCompletions.belongsTo(DefaultMaps, { foreignKey: "mapId" });
+CampaignMapCompletions.belongsTo(Users, { foreignKey: "userId" });
+CampaignMapCompletions.belongsTo(CampaignMaps, { foreignKey: "mapId" });
 
 instance.authenticate().then(() => {
   console.log("Connection has been established successfully.");
