@@ -30,6 +30,7 @@ export const seedRoles = async function () {
 export const getAllCampaign = async function () {
   try {
     console.log("Seeding campaigns");
+
     const count = await CampaignMap.findAndCountAll();
     if (count.count > 0) {
       console.log("campaigns already seeded");
@@ -40,12 +41,12 @@ export const getAllCampaign = async function () {
     campaigns.forEach(async (campaign, index) => {
       const campaignData = fs.readFileSync(`./seeders/campaigns/${campaign}`);
       const parsedCampaign = JSON.parse(campaignData.toString());
-      await CampaignMap.create({
+      CampaignMap.create({
         id: index + 1,
         map_data: parsedCampaign,
       });
     });
   } catch (error) {
-    console.error("Failed to seed roles:", error);
+    console.error("Failed to seed campaign:", error);
   }
 };
