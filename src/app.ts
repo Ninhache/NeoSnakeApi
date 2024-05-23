@@ -10,9 +10,9 @@ configDotenv();
 import articleRouter from "./controller/article";
 import authRouter from "./controller/auth";
 import levelRouter from "./controller/level";
-import { setupWatcher } from "./services/hotLoader";
-import { seedRoles } from "./seed";
 import { instance } from "./db/init";
+import { getAllCampaign, seedRoles } from "./seed";
+import { setupWatcher } from "./services/hotLoader";
 
 // Not secured.. BUT it's a demo and I don't want to deal with CORS issues, since we don't know where
 // the frontend will be hosted and else, I will keep it simple... stupid
@@ -33,10 +33,13 @@ setupWatcher(path.join(process.cwd(), "assets/articles"));
 
 instance.authenticate().then(() => {
   console.log("DB Connection has been established successfully.");
-  console.log("Seeding roles in 10 seconds !");
+  console.log("Try seeding in 5 seconds !");
   setTimeout(() => {
     seedRoles();
-  }, 10000);
+  }, 5000);
+  setTimeout(() => {
+    getAllCampaign();
+  }, 5000);
 });
 
 const PORT = process.env.PORT || 3000;
