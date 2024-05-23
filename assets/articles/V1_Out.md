@@ -15,4 +15,4 @@ We are thrilled to announce that the first version of NeoSnake is now available!
 
 ## What's New?
 
-nothing... 📝
+From the "beta" ? Nothing... But we are working on it! 🛠️
