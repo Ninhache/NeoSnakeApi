@@ -97,39 +97,31 @@ We still have created this table to help you understand the API :
 > - **Campaign** _focused on the story_
 > - **Online**
 > - **Create** _focused on the creation of the online levels_
-> - **Upload** _focused on user's upload_
-
-[scenarioDataSchema](./src/schema/map.ts)
 
 #### Campaign
 
-| Method | Route                      | Description                               | Body | Data type | Pagination |
-| ------ | -------------------------- | ----------------------------------------- | ---- | --------- | ---------- |
-| GET    | /level/campaign            | Get a preview of all campaign levels      |      |           | Yes        |
-| GET    | /level/campaign/:id        | Get a specific campaign level             |      |           |            |
-| PUT    | /level/campaign/completion | Update the completion of a campaign level |      |           |            |
-| PUT    | /level/campaign            | Create a new campaign level (Admin only)  |      |           |            |
+| Method | Route                            | Description                               | Body                                              | Data return type                                           | Pagination |
+| ------ | -------------------------------- | ----------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------- | ---------- |
+| GET    | /level/campaign                  | Get a preview of all campaign levels      |                                                   | [CampaignPreviewResponse\[\]](./src/@types/ApiResponse.ts) | Yes        |
+| GET    | /level/campaign/:id              | Get a specific campaign level             |                                                   | [CampaignData](./src/@types/Map.ts)                        |            |
+| GET    | /level/campaign/completion/check | Check if all levels are completed         |                                                   | boolean                                                    |            |
+| PUT    | /level/campaign/completion       | Update the completion of a campaign level | [CampaignMapCompletion](./src/schema/campaign.ts) | integer                                                    |            |
+| PUT    | /level/campaign                  | Create a new campaign level (Admin only)  | [CampaignData](./src/@types/Map.ts)               |                                                            |            |
 
 #### Online
 
-| Method | Route                    | Description                              | Body | Data type | Pagination |
-| ------ | ------------------------ | ---------------------------------------- | ---- | --------- | ---------- |
-| GET    | /level/online            | Get a preview of all online levels       |      |           | Yes        |
-| GET    | /level/online/:id        | Get a specific online level              |      |           |            |
-| POST   | /level/online/completion | Update the completion of an online level |      |           |            |
+| Method | Route                    | Description                              | Body                                                | Data type                                                  | Pagination |
+| ------ | ------------------------ | ---------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------- | ---------- |
+| GET    | /level/online            | Get a preview of all uploaded levels     |                                                     | [GetAllUploadSuccessResponse](./src/@types/ApiResponse.ts) | Yes        |
+| GET    | /level/online/:id        | Get a specific uploaded level            |                                                     | [OnlineMap](./src/@types/db/OnlineMap.ts)                  |            |
+| PUT    | /level/online            | Upload a new level                       | [onlineDataSchema](./src/schema/map.ts)             |                                                            |            |
+| POST   | /level/online/completion | Update the completion of an online level | [OnlineMapCompletionSchema](./src/schema/online.ts) |                                                            |            |
 
 #### Create
 
-| Method | Route             | Description                         | Body | Data type | Pagination |
-| ------ | ----------------- | ----------------------------------- | ---- | --------- | ---------- |
-| GET    | /level/create     | Get a preview of all created levels |      |           | Yes        |
-| GET    | /create/:username | Get all levels created by a user    |      |           | Yes        |
-
-#### Upload
-
-| Method | Route             | Description                                    | Body | Data type | Pagination |
-| ------ | ----------------- | ---------------------------------------------- | ---- | --------- | ---------- |
-| GET    | /level/upload     | Get a preview of all uploaded levels           |      |           | Yes        |
-| GET    | /level/upload/:id | Get a preview of all uploaded levels by a user |      |           | Yes        |
-| DELETE | /level/upload/:id | Delete an uploaded level by a user             |      |           |            |
-| PUT    | /level/upload     | Upload a new level                             |      |           |            |
+| Method | Route                   | Description                         | Body | Data type                                                      | Pagination |
+| ------ | ----------------------- | ----------------------------------- | ---- | -------------------------------------------------------------- | ---------- |
+| GET    | /level/create           | Get a preview of all created levels |      | [GetCreatePreviewSuccessResponse](./src/@types/ApiResponse.ts) | Yes        |
+| GET    | /level/create/:username | Get all levels created by a user    |      | [GetAllUploadSuccessResponse](./src/@types/ApiResponse.ts)     | Yes        |
+| GET    | /level/create/:id       | Get a specific online level         |      | [OnlineMap](./src/@types/db/OnlineMap.ts)                      |            |
+| DELETE | /level/create/:id       | Delete a specific online level      |      |                                                                |            |
