@@ -1,6 +1,6 @@
 ---
 title: The Mysterious Manuscript
-tags: [article, mystery, decryption]
+tags: [development]
 date: 2024-05-10
 authorName: Cobra's Team
 authorImage: assets/discord.jpg

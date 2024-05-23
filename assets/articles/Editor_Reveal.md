@@ -1,6 +1,6 @@
 ---
 title: Discovering Cobra's Hidden Secrets
-tags: [article, gaming, development, secrets]
+tags: [development]
 date: 2024-05-17
 authorName: Cobra's Team
 authorImage: assets/discord.jpg
