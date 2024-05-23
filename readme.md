@@ -127,3 +127,19 @@ We still have created this table to help you understand the API :
 | GET    | /level/create/:username | Get all levels created by a user    |      | [GetAllUploadSuccessResponse](./src/@types/ApiResponse.ts)     | Yes        |
 | GET    | /level/create/:id       | Get a specific online level         |      | [OnlineMap](./src/@types/db/OnlineMap.ts)                      |            |
 | DELETE | /level/create/:id       | Delete a specific online level      |      |                                                                |            |
+
+### Auth
+
+| Method | Route         | Description       | Body                                 | Data type |
+| ------ | ------------- | ----------------- | ------------------------------------ | --------- |
+| POST   | /auth/signup  | Sign up           | [signupSchema](./src/schema/auth.ts) |           |
+| POST   | /auth/login   | Log in            | [loginSchema](./src/schema/auth.ts)  |           |
+| GET    | /auth/refresh | Refresh the token |                                      | string    |
+
+### Article
+
+| Method | Route         | Description            | Body | Data type                                      |
+| ------ | ------------- | ---------------------- | ---- | ---------------------------------------------- |
+| GET    | /article      | Get all articles       |      | [ArticlePreview](./src/@types/ArticlePosts.ts) |
+| GET    | /article/:id  | Get a specific article |      | [ArticlePost](./src/@types/ArticlePosts.ts)    |
+| GET    | /article/tags | Get all tags           |      | string[]                                       |
