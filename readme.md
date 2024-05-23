@@ -1,11 +1,13 @@
 # SnakeAPI
 
-> Before setup, make sure you have `docker` installed on your machine
-> If you don't, that's not important, instead of using the local api, you can use the deployed one at `snakedev.ninhache.fr`
-> That way the api will be already setup and you can focus on the front-end part
-> _Just be sure the front's .env is set to the right url_
+> This is the backend part of the project, look at the [frontend repo](https://github.com/Ninhache/NeoSnake.git)
 
 ## Installation & Setup
+
+> Before setup, make sure you have `docker` installed on your machine
+> If you don't, that's not important, instead of using the local api, you can use the deployed one at `https://snakeapi.ninhache.fr`
+> That way the api will be already setup and you can focus on the front-end part
+> _Just be sure the front's .env is set to the right url_
 
 **First** clone the repo :
 
