@@ -23,6 +23,13 @@ app.use(urlencoded({ limit: "10mb", extended: true }));
 
 export const assetsPath = path.join(process.cwd(), "assets");
 
+// app.use("*", (req, res, next) => {
+//   console.log(
+//     `[${new Date().toLocaleString()}] ${req.method} ${req.originalUrl}`
+//   );
+//   next();
+// });
+
 app.use("/level", levelRouter);
 app.use("/article", articleRouter);
 app.use("/assets", express.static(assetsPath));

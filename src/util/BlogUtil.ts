@@ -8,5 +8,6 @@ export function transformTitleToPath(title: string) {
   return title
     .toLowerCase()
     .replace(/[^a-zA-Z0-9 ]/g, "")
+    .trim()
     .replace(/ /g, "-");
 }

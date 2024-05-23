@@ -27,6 +27,11 @@ export const seedRoles = async function () {
   }
 };
 
+function extractNumber(filename: string): number | null {
+  const match = filename.match(/_(\d+)\.json/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
 export const getAllCampaign = async function () {
   try {
     console.log("Seeding campaigns");
@@ -41,9 +46,19 @@ export const getAllCampaign = async function () {
     campaigns.forEach(async (campaign, index) => {
       const campaignData = fs.readFileSync(`./seeders/campaigns/${campaign}`);
       const parsedCampaign = JSON.parse(campaignData.toString());
+
+      const id = extractNumber(campaign);
+
+      if (!id) {
+        console.error("Failed to extract id from filename:", campaign);
+        return;
+      }
+
       CampaignMap.create({
-        id: index + 1,
+        id,
         map_data: parsedCampaign,
+      }).catch((error) => {
+        console.error("Failed to seed campaign:", error);
       });
     });
   } catch (error) {

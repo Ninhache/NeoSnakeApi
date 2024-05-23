@@ -1,56 +1,18 @@
-import express, { NextFunction, Request, Response } from "express";
+import express from "express";
 
 const authRouter = express.Router();
 
-import { ZodError, z } from "zod";
 import {
   ErrorResponse,
   LoginSuccessResponse,
   RefreshSuccessResponse,
 } from "../@types/ApiResponse";
 import { Roles, Users } from "../db/init";
+import { validateBody } from "../middlewares/validateBody";
+import { loginSchema, signupSchema } from "../schema/auth";
 import { handleLogin, handleRegistration } from "../services/auth";
 import { sign, verify } from "../services/jwt";
 import { sendApiResponse } from "../util/ExpressUtil";
-
-const signupSchema = z.object({
-  username: z
-    .string()
-    .min(4, { message: "Min 4 chars" })
-    .max(16, { message: "Max 16 chars" }),
-  password: z.string().min(4, { message: "Minimum of 4 length" }),
-});
-
-const loginSchema = z.object({
-  username: z.string().refine((v) => v.length > 0, {
-    message: "Username is required",
-  }),
-  password: z.string().refine((v) => v.length > 0, {
-    message: "Password is required",
-  }),
-});
-
-const validateBody =
-  (schema: z.ZodSchema) =>
-  (req: Request, res: Response, next: NextFunction) => {
-    try {
-      schema.parse(req.body);
-      next();
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return res.status(400).json({
-          statusCode: 400,
-          message: "Some inputs need your fix.",
-          errors: error.issues,
-        });
-      } else {
-        return res.status(500).json({
-          statusCode: 500,
-          message: "Internal server error.",
-        });
-      }
-    }
-  };
 
 function isErrorWithMessage(
   error: unknown

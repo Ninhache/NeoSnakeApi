@@ -11,7 +11,7 @@ import {
   GetCampaignByIdResponse,
   GetCreatePreviewSuccessResponse,
   GetOnlineMapByIdSuccessResponse,
-  SuccessResponse
+  SuccessResponse,
 } from "../@types/ApiResponse";
 
 import { CampaignData, OnlineData } from "../@types/Map";
@@ -29,8 +29,8 @@ import { OnlineMapFilterSchema, PaginationSchema } from "../schema/filters";
 import { campaignDataSchema, onlineDataSchema } from "../schema/map";
 import { OnlineMapCompletionSchema } from "../schema/online";
 import { sendApiResponse } from "../util/ExpressUtil";
+import { validateBody } from "../middlewares/validateBody";
 
-const JWT_SECRET = process.env.JWT_SECRET as string;
 const levelRouter = express.Router();
 
 levelRouter.get("/campaign", async (req: Request, res: Response) => {
@@ -40,7 +40,8 @@ levelRouter.get("/campaign", async (req: Request, res: Response) => {
     if (!accessToken) {
       await CampaignMaps.findAll({
         attributes: ["id", "map_data"],
-        limit: 5,
+        limit: 4,
+        order: [["id", "ASC"]],
       }).then((maps) => {
         const result = maps.map((map) => {
           const data = JSON.parse(map.map_data) as CampaignData;
@@ -143,37 +144,45 @@ levelRouter.get("/campaign", async (req: Request, res: Response) => {
 });
 
 levelRouter.get("/campaign/:id", (req: Request, res: Response) => {
-  CampaignMaps.findOne({
-    where: {
-      id: req.params.id,
-    },
-  }).then((map) => {
-    if (!map) {
-      sendApiResponse<ErrorResponse>(res, 404, {
-        success: false,
-        message: "Map not found",
-        statusCode: 404,
+  try {
+    CampaignMaps.findOne({
+      where: {
+        id: req.params.id,
+      },
+    }).then((map) => {
+      if (!map) {
+        sendApiResponse<ErrorResponse>(res, 404, {
+          success: false,
+          message: "Map not found",
+          statusCode: 404,
+        });
+        return;
+      }
+
+      if (!map.map_data) {
+        sendApiResponse<ErrorResponse>(res, 500, {
+          success: false,
+          message: "Map data corrupted",
+          statusCode: 500,
+        });
+        return;
+      }
+
+      sendApiResponse<GetCampaignByIdResponse>(res, 200, {
+        success: true,
+        message: "Map found",
+        statusCode: 200,
+        data: JSON.parse(map.map_data),
       });
       return;
-    }
-
-    if (!map.map_data) {
-      sendApiResponse<ErrorResponse>(res, 500, {
-        success: false,
-        message: "Map data corrupted",
-        statusCode: 500,
-      });
-      return;
-    }
-
-    sendApiResponse<GetCampaignByIdResponse>(res, 200, {
-      success: true,
-      message: "Map found",
-      statusCode: 200,
-      data: JSON.parse(map.map_data) as OnlineData,
     });
-    return;
-  });
+  } catch (error) {
+    sendApiResponse<ErrorResponse>(res, 500, {
+      success: false,
+      message: "Internal server error",
+      statusCode: 500,
+    });
+  }
 });
 
 // check if all levels are completed
@@ -196,7 +205,7 @@ levelRouter.get(
 
       const completedMaps = completions.length;
 
-      sendApiResponse(res, 200, {
+      sendApiResponse<SuccessResponse & { allCompleted: boolean }>(res, 200, {
         success: true,
         message: "Completion check",
         statusCode: 200,
@@ -215,59 +224,45 @@ levelRouter.get(
 levelRouter.put(
   "/campaign/completion",
   authtokenMiddleware,
+  validateBody(CampaignMapCompletionSchema),
   async (req: Request, res: Response) => {
     const accessToken = req.headers["authorization"] || "";
 
     const { id: user_id } = jwtDecode(accessToken) as { id: number };
-    const data: unknown = { user_id: user_id, ...req.body };
+    const data = { user_id: user_id, ...req.body };
 
-    let validatedData = null;
-    try {
-      validatedData = CampaignMapCompletionSchema.parse(data);
-    } catch (e) {
-      console.error(e);
-    }
-
-    if (validatedData === null) {
-      sendApiResponse<ErrorResponse>(res, 400, {
-        success: false,
-        message: "Invalid data",
-        statusCode: 400,
-      });
-      return;
-    }
     let nextId = -1;
     try {
       const existingCompletion = await CampaignMapCompletions.findOne({
         where: {
           user_id: user_id,
-          map_id: validatedData.map_id,
+          map_id: data.map_id,
         },
       });
 
       if (existingCompletion) {
         if (
-          validatedData.completionTime <
+          data.completionTime <
           new Date(existingCompletion.completionTime).getTime()
         ) {
           await existingCompletion.update({
-            completionTime: new Date(validatedData.completionTime),
-            completionDate: new Date(validatedData.completionDate),
+            completionTime: new Date(data.completionTime),
+            completionDate: new Date(data.completionDate),
           });
         }
       } else {
         await CampaignMapCompletions.create({
-          user_id: validatedData.user_id,
-          map_id: validatedData.map_id,
-          completionTime: new Date(validatedData.completionTime),
-          completionDate: new Date(validatedData.completionDate),
+          user_id: data.user_id,
+          map_id: data.map_id,
+          completionTime: new Date(data.completionTime),
+          completionDate: new Date(data.completionDate),
         });
       }
 
       const mostRecentCompletion = await CampaignMapCompletions.findOne({
         where: {
           user_id: user_id,
-          map_id: validatedData.map_id,
+          map_id: data.map_id,
         },
         order: [["map_id", "DESC"]],
       });
@@ -477,8 +472,9 @@ levelRouter.post(
     }
   }
 );
+
 levelRouter.get(
-  "/upload/:id",
+  "/create/:id",
   authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {
@@ -541,8 +537,9 @@ levelRouter.get(
     }
   }
 );
+
 levelRouter.delete(
-  "/upload/:id",
+  "/online/:id",
   authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {
@@ -694,34 +691,16 @@ levelRouter.get(
   }
 );
 
-levelRouter.get("/create/:username", async (req: Request, res: Response) => {
-  try {
-    const { username } = req.params;
+levelRouter.get(
+  "/create/user/:username",
+  authtokenMiddleware,
+  async (req: Request, res: Response) => {
+    try {
+      const { username } = req.params;
 
-    const { limit, page } = PaginationSchema.parse(req.query);
+      const { limit, page } = PaginationSchema.parse(req.query);
 
-    const totalItems = await OnlineMaps.count({
-      include: [
-        {
-          model: Users,
-          as: "creator",
-          attributes: ["username"],
-          where: {
-            username: {
-              [Op.eq]: `${username}`,
-            },
-          },
-        },
-      ],
-    });
-
-    const accessToken = req.headers["authorization"];
-
-    if (!accessToken) {
-      OnlineMaps.findAll({
-        limit,
-        offset: (page - 1) * limit,
-        order: [["updated_at", "desc"]],
+      const totalItems = await OnlineMaps.count({
         include: [
           {
             model: Users,
@@ -734,148 +713,170 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
             },
           },
         ],
-      })
-        .then((maps) => {
-          return maps.map((map) => {
-            const data = JSON.parse(map.map_data) as OnlineData;
-            const { options } = data;
-            const preview = data.maps.shift();
+      });
 
-            if (!preview) {
-              throw new Error("Problem getting the preview map data");
-            }
+      const accessToken = req.headers["authorization"];
 
-            const { fruits, obstacles } = preview;
-
-            return {
-              id: map.id,
-              options,
-              fruits,
-              obstacles,
-              completed: false,
-            };
-          });
-        })
-        .then((maps) => {
-          if (maps && maps.length === 0) {
-            sendApiResponse<ErrorResponse>(res, 204, {
-              success: false,
-              message: "No maps found",
-              statusCode: 204,
-            });
-          } else {
-            sendApiResponse<GetAllUploadSuccessResponse>(res, 200, {
-              success: true,
-              message: "Levels found",
-              statusCode: 200,
-              data: maps,
-              pagination: {
-                totalItems,
-                totalPages: Math.ceil(totalItems / limit),
-                pageSize: limit,
-                currentPage: page,
+      if (!accessToken) {
+        OnlineMaps.findAll({
+          limit,
+          offset: (page - 1) * limit,
+          order: [["updated_at", "desc"]],
+          include: [
+            {
+              model: Users,
+              as: "creator",
+              attributes: ["username"],
+              where: {
+                username: {
+                  [Op.eq]: `${username}`,
+                },
               },
-            });
-          }
-        });
-    } else {
-      const jwt = jwtDecode(accessToken || "");
+            },
+          ],
+        })
+          .then((maps) => {
+            return maps.map((map) => {
+              const data = JSON.parse(map.map_data) as OnlineData;
+              const { options } = data;
+              const preview = data.maps.shift();
 
-      if (!("id" in jwt)) {
-        sendApiResponse<ErrorResponse>(res, 400, {
-          success: false,
-          message: "Invalid token",
-          statusCode: 400,
-        });
-        return;
+              if (!preview) {
+                throw new Error("Problem getting the preview map data");
+              }
+
+              const { fruits, obstacles } = preview;
+
+              return {
+                id: map.id,
+                options,
+                fruits,
+                obstacles,
+                completed: false,
+              };
+            });
+          })
+          .then((maps) => {
+            if (maps && maps.length === 0) {
+              sendApiResponse<ErrorResponse>(res, 204, {
+                success: false,
+                message: "No maps found",
+                statusCode: 204,
+              });
+            } else {
+              sendApiResponse<GetAllUploadSuccessResponse>(res, 200, {
+                success: true,
+                message: "Levels found",
+                statusCode: 200,
+                data: maps,
+                pagination: {
+                  totalItems,
+                  totalPages: Math.ceil(totalItems / limit),
+                  pageSize: limit,
+                  currentPage: page,
+                },
+              });
+            }
+          });
+      } else {
+        const jwt = jwtDecode(accessToken || "");
+
+        if (!("id" in jwt)) {
+          sendApiResponse<ErrorResponse>(res, 400, {
+            success: false,
+            message: "Invalid token",
+            statusCode: 400,
+          });
+          return;
+        }
+
+        const { id } = jwt;
+
+        OnlineMaps.findAll({
+          limit,
+          offset: (page - 1) * limit,
+          order: [["updated_at", "desc"]],
+          include: [
+            {
+              model: Users,
+              as: "creator",
+              attributes: ["username"],
+              where: {
+                username: {
+                  [Op.eq]: `${username}`,
+                },
+              },
+            },
+            {
+              model: OnlineMapCompletions,
+              as: "completions",
+              required: false,
+              where: {
+                user_id: id,
+              },
+              attributes: ["completionTime"],
+            },
+          ],
+        })
+          .then((maps) => {
+            return maps.map((map) => {
+              let completed = map.completions && map.completions.length > 0;
+
+              const data = JSON.parse(map.map_data) as OnlineData;
+              const { options } = data;
+              const preview = data.maps.shift();
+
+              if (!preview) {
+                throw new Error("Problem getting the preview map data");
+              }
+
+              const { fruits, obstacles } = preview;
+
+              return {
+                id: map.id,
+                options,
+                fruits,
+                obstacles,
+                completed: completed,
+                completionTime: completed
+                  ? map.completions?.at(0)?.completionTime
+                  : null,
+              };
+            });
+          })
+          .then((maps) => {
+            if (maps.length === 0) {
+              sendApiResponse<ErrorResponse>(res, 204, {
+                success: false,
+                message: "No maps found",
+                statusCode: 204,
+              });
+            } else {
+              sendApiResponse<GetCreatePreviewSuccessResponse>(res, 200, {
+                success: true,
+                message: "Maps found",
+                statusCode: 200,
+                data: maps,
+                pagination: {
+                  totalItems: totalItems,
+                  totalPages: Math.ceil(totalItems / limit),
+                  pageSize: limit,
+                  currentPage: page,
+                },
+              });
+            }
+          });
       }
-
-      const { id } = jwt;
-
-      OnlineMaps.findAll({
-        limit,
-        offset: (page - 1) * limit,
-        order: [["updated_at", "desc"]],
-        include: [
-          {
-            model: Users,
-            as: "creator",
-            attributes: ["username"],
-            where: {
-              username: {
-                [Op.eq]: `${username}`,
-              },
-            },
-          },
-          {
-            model: OnlineMapCompletions,
-            as: "completions",
-            required: false,
-            where: {
-              user_id: id,
-            },
-            attributes: ["completionTime"],
-          },
-        ],
-      })
-        .then((maps) => {
-          return maps.map((map) => {
-            let completed = map.completions && map.completions.length > 0;
-
-            const data = JSON.parse(map.map_data) as OnlineData;
-            const { options } = data;
-            const preview = data.maps.shift();
-
-            if (!preview) {
-              throw new Error("Problem getting the preview map data");
-            }
-
-            const { fruits, obstacles } = preview;
-
-            return {
-              id: map.id,
-              options,
-              fruits,
-              obstacles,
-              completed: completed,
-              completionTime: completed
-                ? map.completions?.at(0)?.completionTime
-                : null,
-            };
-          });
-        })
-        .then((maps) => {
-          if (maps.length === 0) {
-            sendApiResponse<ErrorResponse>(res, 204, {
-              success: false,
-              message: "No maps found",
-              statusCode: 204,
-            });
-          } else {
-            sendApiResponse<GetCreatePreviewSuccessResponse>(res, 200, {
-              success: true,
-              message: "Maps found",
-              statusCode: 200,
-              data: maps,
-              pagination: {
-                totalItems: totalItems,
-                totalPages: Math.ceil(totalItems / limit),
-                pageSize: limit,
-                currentPage: page,
-              },
-            });
-          }
-        });
+    } catch (error) {
+      console.error("aggaa", error);
+      sendApiResponse<ErrorResponse>(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
     }
-  } catch (error) {
-    console.error(error);
-    sendApiResponse<ErrorResponse>(res, 500, {
-      success: false,
-      message: "Internal server error",
-      statusCode: 500,
-    });
   }
-});
+);
 
 type WhereClause = {
   [key: string]:
@@ -889,7 +890,7 @@ type WhereClause = {
     | string;
 };
 
-levelRouter.get("/upload", async (req: Request, res: Response) => {
+levelRouter.get("/online", async (req: Request, res: Response) => {
   try {
     const validatedFilter = OnlineMapFilterSchema.merge(PaginationSchema).parse(
       req.query
@@ -1068,7 +1069,7 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
 });
 
 levelRouter.put(
-  "/upload",
+  "/online",
   authtokenMiddleware,
   async (req: Request, res: Response) => {
     try {

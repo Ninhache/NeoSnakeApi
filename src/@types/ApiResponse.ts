@@ -1,4 +1,4 @@
-import { BaseFruits, BaseObstacles, BaseOptions, OnlineData } from "./Map";
+import { BaseFruits, BaseObstacles, BaseOptions, CampaignData } from "./Map";
 import { OnlineMap } from "./db/OnlineMap";
 
 export interface ApiResponse {
@@ -73,7 +73,7 @@ export interface GetAllUploadSuccessResponse
 }
 
 export interface GetCampaignByIdResponse extends SuccessResponse {
-  data: OnlineData;
+  data: CampaignData;
 }
 
 export interface CampaignPreviewResponse extends SuccessResponse {
