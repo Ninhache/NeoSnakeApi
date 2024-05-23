@@ -1,22 +1,22 @@
 import { Model } from "sequelize";
 
 interface CampaignMapCompletionAttributes {
-  userId: number;
-  mapId: string;
+  user_id: number;
+  map_id: number;
   completionTime: Date;
   completionDate: Date;
 }
 
 export class CampaignMapCompletion extends Model<CampaignMapCompletionAttributes> {
-  public userId!: number;
-  public mapId!: string;
+  public user_id!: number;
+  public map_id!: number;
   public completionTime!: Date;
   public completionDate!: Date;
 }
 
 export class OnlineMapCompletion extends Model {
-  public userId!: number;
-  public mapId!: string;
+  public user_id!: number;
+  public map_id!: string;
   public completionTime!: Date;
   public completionDate!: Date;
 }

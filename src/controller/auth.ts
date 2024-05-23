@@ -8,6 +8,7 @@ import {
   LoginSuccessResponse,
   RefreshSuccessResponse,
 } from "../@types/ApiResponse";
+import { Roles, Users } from "../db/init";
 import { handleLogin, handleRegistration } from "../services/auth";
 import { sign, verify } from "../services/jwt";
 import { sendApiResponse } from "../util/ExpressUtil";
@@ -134,8 +135,7 @@ authRouter.post(
         return;
       }
 
-      const { accessToken, refreshToken, username, message, statusCode } =
-        response;
+      const { accessToken, refreshToken, username } = response;
 
       sendApiResponse<LoginSuccessResponse>(res, response.statusCode, {
         success: true,
@@ -145,6 +145,7 @@ authRouter.post(
         refreshToken,
         username,
       });
+
       return;
     } catch (error) {
       sendApiResponse<ErrorResponse>(res, 500, {
@@ -173,6 +174,7 @@ authRouter.get("/refresh", async (req, res) => {
     const isRefreshTokenValid = (await verify(currentRefreshToken)) as {
       username: string;
       id: string;
+      role: string;
     };
 
     if (typeof isRefreshTokenValid !== "object") {
@@ -184,9 +186,33 @@ authRouter.get("/refresh", async (req, res) => {
       return;
     }
 
+    const user = await Users.findOne({
+      where: { id: isRefreshTokenValid.id },
+      include: [
+        {
+          model: Roles,
+          attributes: ["id", "label"],
+        },
+      ],
+    });
+
+    if (!user) {
+      sendApiResponse<ErrorResponse>(res, 403, {
+        success: false,
+        statusCode: 403,
+        message: "You're forbidden from doing that.",
+      });
+      return;
+    }
+
     const newAccessToken = await sign(
-      { username: isRefreshTokenValid.username, id: isRefreshTokenValid.id },
-      "10m"
+      {
+        username: isRefreshTokenValid.username,
+        id: isRefreshTokenValid.id,
+        // @ts-ignore
+        role: user.role.label,
+      },
+      "1h"
     );
 
     sendApiResponse<RefreshSuccessResponse>(res, 201, {

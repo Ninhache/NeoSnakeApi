@@ -1,4 +1,4 @@
-import { OnlineData, BaseFruits, BaseObstacles, BaseOptions } from "./Map";
+import { BaseFruits, BaseObstacles, BaseOptions, OnlineData } from "./Map";
 import { OnlineMap } from "./db/OnlineMap";
 
 export interface ApiResponse {
@@ -87,4 +87,8 @@ export interface CampaignPreviewResponse extends SuccessResponse {
     name: string;
     completed: boolean;
   }[];
+}
+
+export interface GetCampaignsResponse extends SuccessResponse {
+  nextId: number | null;
 }

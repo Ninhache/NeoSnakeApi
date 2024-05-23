@@ -18,10 +18,12 @@ export const obstacleColor = [
   "black",
   "gray",
   "silver",
+  "dimgray",
   "blue",
   "teal",
   "cyan",
   "skyblue",
+  "darkblue",
   "indigo",
   "purple",
   "violet",
@@ -32,6 +34,8 @@ export const obstacleColor = [
   "gold",
   "lime",
   "green",
+  "chartreuse",
+  "springgreen",
 ] as const;
 export type ObstacleColorType = z.infer<typeof ObstacleColorSchema>;
 

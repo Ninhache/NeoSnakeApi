@@ -4,7 +4,7 @@ import {
   LoginSuccessResponse,
   SignupSuccessResponse,
 } from "../@types/ApiResponse";
-import { Users, instance } from "../db/init";
+import { Roles, Users, instance } from "../db/init";
 
 import { sign } from "./jwt";
 
@@ -52,38 +52,44 @@ export async function handleLogin(
   username: string,
   password: string
 ): Promise<LoginSuccessResponse | ErrorResponse> {
-  const user = await instance.query(
-    `SELECT
-        id, username
-    FROM
-        users
-    WHERE
-        username = $1
-        AND password = crypt ($2, password);`,
-    {
-      bind: [username, password],
-      type: QueryTypes.SELECT,
-    }
-  );
+  const user = await Users.findOne({
+    attributes: ["id", "username"], // Select fields
+    where: {
+      username,
+      password: instance.fn("crypt", password, instance.col("password")),
+    },
+    include: [
+      {
+        model: Roles,
+        attributes: ["label"],
+      },
+    ],
+  });
 
-  if (user.length === 0) {
+  if (user === null) {
     return {
       success: false,
       statusCode: 401,
       message: "Invalid credentials.",
     };
   }
-  const dbUser = user[0] as {
-    id: number;
-    username: string;
-  };
 
   const accessToken = await sign(
-    { id: dbUser.id, username: dbUser.username },
+    {
+      id: user.id,
+      username: user.username,
+      // @ts-ignore
+      role: user.role.label,
+    },
     "1h"
   );
   const refreshToken = await sign(
-    { id: dbUser.id, username: dbUser.username },
+    {
+      id: user.id,
+      username: user.username,
+      // @ts-ignore
+      role: user.role.label,
+    },
     "30d"
   );
 
@@ -93,6 +99,6 @@ export async function handleLogin(
     message: "Login successful.",
     accessToken,
     refreshToken,
-    username: dbUser.username,
+    username: user.username,
   };
 }

@@ -5,8 +5,8 @@ import {
   OnlineMapCompletion,
 } from "../@types/db/MapCompletion";
 import { OnlineMap } from "../@types/db/OnlineMap";
-import { User } from "../@types/db/User";
 import { Role } from "../@types/db/Role";
+import { User } from "../@types/db/User";
 
 const DB = process.env.POSTGRES_DB as string;
 const USER = process.env.POSTGRES_USER as string;
@@ -129,14 +129,14 @@ export const OnlineMaps = OnlineMap.init(
 
 export const OnlineMapCompletions = OnlineMapCompletion.init(
   {
-    userId: {
+    user_id: {
       type: DataTypes.INTEGER,
       references: {
         model: Users,
         key: "id",
       },
     },
-    mapId: {
+    map_id: {
       type: DataTypes.UUID,
       allowNull: false,
       references: {
@@ -163,14 +163,14 @@ export const OnlineMapCompletions = OnlineMapCompletion.init(
 
 export const CampaignMapCompletions = CampaignMapCompletion.init(
   {
-    userId: {
+    user_id: {
       type: DataTypes.INTEGER,
       references: {
         model: Users,
         key: "id",
       },
     },
-    mapId: {
+    map_id: {
       type: DataTypes.INTEGER,
       allowNull: false,
       references: {
@@ -195,19 +195,19 @@ export const CampaignMapCompletions = CampaignMapCompletion.init(
     indexes: [
       {
         unique: true,
-        fields: ["userId", "mapId"],
+        fields: ["user_id", "map_id"],
       },
     ],
   }
 );
 
-instance.sync();
+instance.sync({ alter: true });
 
 /* Relationships */
 
 Users.hasMany(OnlineMaps, { foreignKey: "creator_id" });
-Users.hasMany(OnlineMapCompletion, { foreignKey: "userId" });
-Users.hasMany(CampaignMapCompletion, { foreignKey: "userId" });
+Users.hasMany(OnlineMapCompletion, { foreignKey: "user_id" });
+Users.hasMany(CampaignMapCompletion, { foreignKey: "user_id" });
 
 Users.belongsTo(Roles, { foreignKey: "role_id" });
 Roles.hasMany(Users, { foreignKey: "role_id" });
@@ -215,14 +215,14 @@ Roles.hasMany(Users, { foreignKey: "role_id" });
 OnlineMaps.belongsTo(Users, { foreignKey: "creator_id", as: "creator" });
 
 OnlineMaps.hasMany(OnlineMapCompletion, {
-  foreignKey: "mapId",
+  foreignKey: "map_id",
   as: "completions",
 });
 
 CampaignMaps.hasMany(CampaignMapCompletion, {
-  foreignKey: "mapId",
+  foreignKey: "map_id",
   as: "completions",
 });
 
-CampaignMapCompletions.belongsTo(Users, { foreignKey: "userId" });
-CampaignMapCompletions.belongsTo(CampaignMaps, { foreignKey: "mapId" });
+CampaignMapCompletions.belongsTo(Users, { foreignKey: "user_id" });
+CampaignMapCompletions.belongsTo(CampaignMaps, { foreignKey: "map_id" });

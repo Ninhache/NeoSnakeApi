@@ -11,16 +11,11 @@ import {
   GetCampaignByIdResponse,
   GetCreatePreviewSuccessResponse,
   GetOnlineMapByIdSuccessResponse,
-  SuccessResponse,
+  SuccessResponse
 } from "../@types/ApiResponse";
-import { CampaignMapCompletion } from "../@types/db/MapCompletion";
 
 import { CampaignData, OnlineData } from "../@types/Map";
-import adminMiddleware from "../middlewares/admin";
-import { CampaignMapCompletionSchema } from "../schema/campaign";
-import { OnlineMapFilterSchema, PaginationSchema } from "../schema/filters";
-import { campaignDataSchema, onlineDataSchema } from "../schema/map";
-import { OnlineMapCompletionSchema } from "../schema/online";
+import { CampaignMap } from "../@types/db/CampaignMap";
 import {
   CampaignMapCompletions,
   CampaignMaps,
@@ -28,8 +23,14 @@ import {
   OnlineMaps,
   Users,
 } from "../db/init";
+import adminMiddleware from "../middlewares/admin";
+import { CampaignMapCompletionSchema } from "../schema/campaign";
+import { OnlineMapFilterSchema, PaginationSchema } from "../schema/filters";
+import { campaignDataSchema, onlineDataSchema } from "../schema/map";
+import { OnlineMapCompletionSchema } from "../schema/online";
 import { sendApiResponse } from "../util/ExpressUtil";
 
+const JWT_SECRET = process.env.JWT_SECRET as string;
 const levelRouter = express.Router();
 
 levelRouter.get("/campaign", async (req: Request, res: Response) => {
@@ -39,6 +40,7 @@ levelRouter.get("/campaign", async (req: Request, res: Response) => {
     if (!accessToken) {
       await CampaignMaps.findAll({
         attributes: ["id", "map_data"],
+        limit: 5,
       }).then((maps) => {
         const result = maps.map((map) => {
           const data = JSON.parse(map.map_data) as CampaignData;
@@ -81,17 +83,29 @@ levelRouter.get("/campaign", async (req: Request, res: Response) => {
 
     const { id } = jwtDecode(accessToken) as { id: number };
 
+    const completedCampaignsMaps = await CampaignMapCompletions.findAndCountAll(
+      {
+        where: {
+          user_id: id,
+        },
+      }
+    );
+
+    const mapCount = await CampaignMaps.count();
+
     const maps = await CampaignMaps.findAll({
       include: [
         {
           model: CampaignMapCompletions,
           as: "completions",
-          where: { userId: id },
+          where: { user_id: id },
           required: false,
           attributes: ["completionTime"],
         },
       ],
+      order: [["id", "ASC"]],
       attributes: ["id", "map_data"],
+      limit: completedCampaignsMaps.count + 1,
     });
 
     const result = maps.map((map) => {
@@ -116,9 +130,10 @@ levelRouter.get("/campaign", async (req: Request, res: Response) => {
       message: "Levels found",
       statusCode: 200,
       data: result,
+      totalItems: mapCount,
     });
   } catch (error) {
-    console.log("AAA", error);
+    console.error(error);
     sendApiResponse<ErrorResponse>(res, 500, {
       success: false,
       message: "Internal server error",
@@ -161,41 +176,57 @@ levelRouter.get("/campaign/:id", (req: Request, res: Response) => {
   });
 });
 
-levelRouter.put(
-  "/campaign/completion",
+// check if all levels are completed
+levelRouter.get(
+  "/campaign/completion/check",
   authtokenMiddleware,
   async (req: Request, res: Response) => {
     const accessToken = req.headers["authorization"];
 
-    if (!accessToken) {
-      sendApiResponse(res, 400, {
-        success: false,
-        message: "Invalid token",
-        statusCode: 400,
-      });
-      return;
-    }
-    let userId = null;
+    const { id } = jwtDecode(accessToken || "") as { id: number };
+
     try {
-      const { id } = jwtDecode(accessToken) as { id: number };
-      userId = id;
-    } catch (error) {}
+      const totalMaps = await CampaignMaps.count();
 
-    if (!userId) {
-      sendApiResponse<ErrorResponse>(res, 400, {
-        success: false,
-        message: "Invalid token",
-        statusCode: 400,
+      const completions = await CampaignMapCompletions.findAll({
+        where: {
+          user_id: id,
+        },
       });
-      return;
-    }
 
-    const data: unknown = { userId, ...req.body };
+      const completedMaps = completions.length;
+
+      sendApiResponse(res, 200, {
+        success: true,
+        message: "Completion check",
+        statusCode: 200,
+        allCompleted: totalMaps === completedMaps,
+      });
+    } catch (error) {
+      sendApiResponse(res, 500, {
+        success: false,
+        message: "Internal server error",
+        statusCode: 500,
+      });
+    }
+  }
+);
+
+levelRouter.put(
+  "/campaign/completion",
+  authtokenMiddleware,
+  async (req: Request, res: Response) => {
+    const accessToken = req.headers["authorization"] || "";
+
+    const { id: user_id } = jwtDecode(accessToken) as { id: number };
+    const data: unknown = { user_id: user_id, ...req.body };
 
     let validatedData = null;
     try {
       validatedData = CampaignMapCompletionSchema.parse(data);
-    } catch (_) {}
+    } catch (e) {
+      console.error(e);
+    }
 
     if (validatedData === null) {
       sendApiResponse<ErrorResponse>(res, 400, {
@@ -205,12 +236,12 @@ levelRouter.put(
       });
       return;
     }
-
+    let nextId = -1;
     try {
-      const existingCompletion = await CampaignMapCompletion.findOne({
+      const existingCompletion = await CampaignMapCompletions.findOne({
         where: {
-          userId: userId,
-          mapId: validatedData.mapId,
+          user_id: user_id,
+          map_id: validatedData.map_id,
         },
       });
 
@@ -223,39 +254,54 @@ levelRouter.put(
             completionTime: new Date(validatedData.completionTime),
             completionDate: new Date(validatedData.completionDate),
           });
-          sendApiResponse<SuccessResponse>(res, 200, {
-            success: true,
-            message: "Level completion updated",
-            statusCode: 200,
-          });
-          return;
-        } else {
-          sendApiResponse<SuccessResponse>(res, 200, {
-            success: true,
-            message: "Existing completion is faster",
-            statusCode: 200,
-          });
-          return;
         }
       } else {
         await CampaignMapCompletions.create({
-          userId: validatedData.userId,
-          mapId: validatedData.mapId,
+          user_id: validatedData.user_id,
+          map_id: validatedData.map_id,
           completionTime: new Date(validatedData.completionTime),
           completionDate: new Date(validatedData.completionDate),
         });
-        sendApiResponse<SuccessResponse>(res, 201, {
-          success: true,
-          message: "Level completion registered",
-          statusCode: 201,
-        });
-        return;
       }
+
+      const mostRecentCompletion = await CampaignMapCompletions.findOne({
+        where: {
+          user_id: user_id,
+          map_id: validatedData.map_id,
+        },
+        order: [["map_id", "DESC"]],
+      });
+
+      if (mostRecentCompletion !== null) {
+        const nextMap = await CampaignMap.findOne({
+          where: {
+            id: {
+              [Op.gt]: mostRecentCompletion.map_id,
+            },
+          },
+          order: [["id", "ASC"]],
+          limit: 1,
+        });
+        if (nextMap !== null) {
+          nextId = nextMap.id;
+        } else {
+          nextId = 0;
+        }
+      }
+
+      sendApiResponse(res, 200, {
+        success: true,
+        message: "Level completion registered",
+        statusCode: 200,
+        nextId,
+      });
     } catch (err) {
+      console.error(err);
       sendApiResponse(res, 500, {
         success: false,
         message: "Internal server error",
         statusCode: 500,
+        nextId: -1,
       });
       return;
     }
@@ -269,9 +315,6 @@ levelRouter.put(
   async (req: Request, res: Response) => {
     try {
       const data: unknown = req.body;
-      // @ts-ignore
-      console.log(data);
-      console.log("----------------------");
       const validatedData: CampaignData = campaignDataSchema.parse(data);
 
       const { id, ...scenarioData } = validatedData;
@@ -288,12 +331,11 @@ levelRouter.put(
 
         CampaignMapCompletions.destroy({
           where: {
-            mapId: validatedData.id,
+            map_id: validatedData.id,
           },
         });
       });
     } catch (error) {
-      console.log(error);
       sendApiResponse<ErrorResponse>(res, 500, {
         success: false,
         message: "Internal server error",
@@ -349,13 +391,13 @@ levelRouter.post(
       return;
     }
 
-    let userId = null;
+    let user_id = null;
     try {
       const { id } = jwtDecode(accessToken) as { id: number };
-      userId = id;
+      user_id = id;
     } catch (error) {}
 
-    if (!userId) {
+    if (!user_id) {
       sendApiResponse<ErrorResponse>(res, 400, {
         success: false,
         message: "Invalid token",
@@ -364,7 +406,7 @@ levelRouter.post(
       return;
     }
 
-    const data: unknown = { userId, ...req.body };
+    const data: unknown = { user_id, ...req.body };
     let validatedData = null;
 
     try {
@@ -383,8 +425,8 @@ levelRouter.post(
     try {
       const existingCompletion = await OnlineMapCompletions.findOne({
         where: {
-          userId: userId,
-          mapId: validatedData.mapId,
+          user_id: user_id,
+          map_id: validatedData.map_id,
         },
       });
 
@@ -413,8 +455,8 @@ levelRouter.post(
         }
       } else {
         await OnlineMapCompletions.create({
-          userId: validatedData.userId,
-          mapId: validatedData.mapId,
+          user_id: validatedData.user_id,
+          map_id: validatedData.map_id,
           completionTime: new Date(validatedData.completionTime),
           completionDate: new Date(validatedData.completionDate),
         });
@@ -770,7 +812,7 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
             as: "completions",
             required: false,
             where: {
-              userId: id,
+              user_id: id,
             },
             attributes: ["completionTime"],
           },
@@ -810,7 +852,6 @@ levelRouter.get("/create/:username", async (req: Request, res: Response) => {
               statusCode: 204,
             });
           } else {
-            console.log("no maps found");
             sendApiResponse<GetCreatePreviewSuccessResponse>(res, 200, {
               success: true,
               message: "Maps found",
@@ -853,8 +894,6 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
     const validatedFilter = OnlineMapFilterSchema.merge(PaginationSchema).parse(
       req.query
     );
-
-    console.log(validatedFilter);
 
     const whereClause: WhereClause = {};
 
@@ -964,7 +1003,7 @@ levelRouter.get("/upload", async (req: Request, res: Response) => {
           {
             model: OnlineMapCompletions,
             as: "completions",
-            where: { userId: id },
+            where: { user_id: id },
             required: false,
             attributes: ["completionTime"],
           },
@@ -1065,11 +1104,12 @@ levelRouter.put(
 
         OnlineMapCompletions.destroy({
           where: {
-            mapId: validatedData.uuid,
+            map_id: validatedData.uuid,
           },
         });
       });
     } catch (error) {
+      console.error(error);
       sendApiResponse<ErrorResponse>(res, 500, {
         success: false,
         message: "Internal server error",
