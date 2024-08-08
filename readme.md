@@ -12,7 +12,7 @@
 **First** clone the repo :
 
 ```bash
-git clone [..] SnakeAPI
+git clone https://github.com/Ninhache/NeoSnakeApi.git SnakeAPI
 cd SnakeAPI
 yarn
 ```
